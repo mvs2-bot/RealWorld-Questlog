@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#6d28d9">
-    <script>(function(){try{if(localStorage.getItem('rq_theme_v1')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <script>(function(){try{if(localStorage.getItem('rq_theme_v2')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <title>The Real World – Quest Log</title>
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -303,8 +303,8 @@
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
         $('#themeToggle').textContent = dark ? '☀️' : '🌙';
         $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
-        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#110f1a' : '#6d28d9';
-        if (save) { try { localStorage.setItem('rq_theme_v1', dark ? 'dark' : 'light'); } catch (e) {} }
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#6d28d9';
+        if (save) { try { localStorage.setItem('rq_theme_v2', dark ? 'dark' : 'light'); } catch (e) {} }
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
     $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);

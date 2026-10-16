@@ -5,9 +5,10 @@
     --danger: #dc2626; --danger-soft: #fee2e2; --radius: 14px; --shadow: 0 4px 12px rgba(30, 27, 46, .06);
 }
 :root[data-theme="dark"] {
-    color-scheme: dark; --bg: #110f1a; --card: #1b1828; --hover: #241f36; --line: #34304a; --ink: #eeeaf8; --text: #cdc7de; --mute: #9a93b3;
-    --p1: #a78bfa; --p1-soft: #2a2145; --p1-line: #4c3d7a; --xp: #fbbf24; --xp-soft: #3a2f10; --ok: #4ade80; --ok-soft: #133321;
-    --danger: #f87171; --danger-soft: #3b1717; --shadow: 0 4px 12px rgba(0,0,0,.35);
+    /* Für AMOLED-Displays: echtes Schwarz als Hintergrund (Pixel bleiben aus), Flächen nur knapp darüber */
+    color-scheme: dark; --bg: #000; --card: #0e0d14; --hover: #18161f; --line: #2b2738; --ink: #f4f1fb; --text: #d6d1e6; --mute: #a39cbb;
+    --p1: #a78bfa; --p1-soft: #1d1630; --p1-line: #4c3d7a; --xp: #fbbf24; --xp-soft: #241d07; --ok: #4ade80; --ok-soft: #0a2213;
+    --danger: #f87171; --danger-soft: #2a0e0e; --shadow: none;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 0 24px 48px; min-height: 100vh; }
