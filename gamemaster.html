@@ -105,7 +105,7 @@
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
     $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
-    $('#logoutBtn').onclick = async () => { await RQ.signOut(); location.href = './'; };
+    $('#logoutBtn').onclick = async () => { await RQ.signOut(); location.replace('./'); };
 
     /* Zufälliges Passwort: 4 Silben + 2 Ziffern + Sonderzeichen, gut vorlesbar */
     function genPassword() {
