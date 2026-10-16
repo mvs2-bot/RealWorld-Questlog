@@ -1,0 +1,51 @@
+name: Supabase wach halten
+
+# Kostenlose Supabase-Projekte pausieren nach ca. 7 Tagen ohne Aktivität.
+# Dieser Job ruft alle 3 Tage die öffentliche RPC get_public_stats auf,
+# das ist eine echte Datenbankabfrage und zählt als Aktivität.
+# URL und Publishable Key kommen aus shared/config.js (oder optional aus
+# den Repo-Secrets SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY).
+# Niemals den secret/service_role Key verwenden!
+
+on:
+  schedule:
+    - cron: '23 6 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: shared/config.js
+          sparse-checkout-cone-mode: false
+
+      - name: Datenbank anpingen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+          url="${SUPABASE_URL:-$(sed -nE "s/^[[:space:]]*url:[[:space:]]*'([^']+)'.*/\1/p" shared/config.js)}"
+          key="${SUPABASE_KEY:-$(sed -nE "s/^[[:space:]]*key:[[:space:]]*'([^']+)'.*/\1/p" shared/config.js)}"
+          if [ -z "$url" ] || [ -z "$key" ] || echo "$url$key" | grep -qE 'DEIN-PROJEKT|DEIN-PUBLISHABLE'; then
+            echo "::notice::Supabase ist noch nicht in shared/config.js eingetragen – nichts zu tun."
+            exit 0
+          fi
+          status=$(curl -sS -o response.json -w '%{http_code}' --retry 3 --retry-delay 10 \
+            -X POST "$url/rest/v1/rpc/get_public_stats" \
+            -H "apikey: $key" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "HTTP $status"
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Supabase-Ping fehlgeschlagen (HTTP $status)"
+            cat response.json || true
+            exit 1
+          fi
+          echo "Supabase ist wach."
