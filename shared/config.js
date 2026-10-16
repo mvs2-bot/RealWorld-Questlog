@@ -7,6 +7,6 @@
    Den Schutz übernehmen Login + Zugriffsregeln in der Datenbank.
    NIEMALS den "secret" bzw. "service_role" Key hier eintragen! */
 window.RQ_CONFIG = {
-    url: 'https://DEIN-PROJEKT.supabase.co',
-    key: 'DEIN-PUBLISHABLE-KEY'
+    url: 'https://jijuxxjhbjrpyunzznec.supabase.co',
+    key: 'sb_publishable_T4DRbZ4jRwRqNWUcjxM0TA_wA2ZfvQ3'
 };
