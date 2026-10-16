@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="de"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#6d28d9">
+    <script>(function(){try{if(localStorage.getItem('rq_theme_v1')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <title>The Real World – Quest Log</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Quest Log">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="shared/config.js"></script>
+    <script src="shared/questlog.js"></script>
+<style>
+    :root {
+        --bg: #f6f5fb; --card: #fff; --hover: #f5f3ff; --line: #d4d0e4; --ink: #1e1b2e; --text: #3f3a55; --mute: #6b6685;
+        --p1: #6d28d9; --p1-soft: #ede9fe; --p1-line: #c4b5fd; --xp: #f59e0b; --xp-soft: #fef3c7; --ok: #15803d; --ok-soft: #dcfce7;
+        --danger: #dc2626; --danger-soft: #fee2e2; --radius: 14px; --shadow: 0 4px 12px rgba(30, 27, 46, .06);
+    }
+    :root[data-theme="dark"] {
+        color-scheme: dark; --bg: #110f1a; --card: #1b1828; --hover: #241f36; --line: #34304a; --ink: #eeeaf8; --text: #cdc7de; --mute: #9a93b3;
+        --p1: #a78bfa; --p1-soft: #2a2145; --p1-line: #4c3d7a; --xp: #fbbf24; --xp-soft: #3a2f10; --ok: #4ade80; --ok-soft: #133321;
+        --danger: #f87171; --danger-soft: #3b1717; --shadow: 0 4px 12px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 0 24px 48px; min-height: 100vh; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--p1); outline-offset: 2px; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    [hidden] { display: none !important; }
+
+    .sticky-header { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 14px 0 12px; margin-bottom: 24px; border-bottom: 3px solid var(--p1); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); font-weight: 800; letter-spacing: -.025em; color: var(--ink); line-height: 1.15; }
+    .sub { font-size: .9rem; font-weight: 600; color: var(--mute); }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .icon-btn { background: var(--card); border: 2px solid var(--line); border-radius: 10px; font-size: 1.3rem; padding: 7px 11px; line-height: 1; color: var(--ink); box-shadow: var(--shadow); }
+    .icon-btn:hover { background: var(--hover); border-color: var(--p1); }
+
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; box-shadow: var(--shadow); }
+    .box h2 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .note { font-size: .84rem; color: var(--mute); margin-bottom: 14px; }
+    .msg { font-size: .84rem; font-weight: 600; border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
+    .msg.err { background: var(--danger-soft); color: var(--danger); }
+    .msg.ok { background: var(--ok-soft); color: var(--ok); }
+    .banner { background: var(--xp-soft); color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 9px 14px; font-size: .84rem; font-weight: 600; margin-bottom: 16px; }
+    :root[data-theme="dark"] .banner { color: #fcd34d; border-color: #5c4a14; }
+
+    /* Formulare */
+    .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    label { font-size: .78rem; font-weight: 700; color: var(--mute); display: flex; flex-direction: column; gap: 4px; }
+    input[type=email], input[type=password], input[type=text], input[type=number], textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; font-size: 16px; color: var(--ink); }
+    textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
+    input:focus, textarea:focus { border-color: var(--p1-line); outline: 3px solid rgba(109,40,217,.15); }
+    .btn { background: var(--p1); color: #fff; border: 2px solid var(--p1); border-radius: 10px; padding: 11px 18px; font-weight: 800; font-size: .95rem; }
+    .btn:hover { filter: brightness(.95); }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    :root[data-theme="dark"] .btn { color: #1e1035; }
+    .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
+    .btn-ghost:hover { background: var(--hover); border-color: var(--p1); }
+    .link-btn { background: none; border: 0; color: var(--p1); font-weight: 700; font-size: .84rem; padding: 2px 0; align-self: flex-start; }
+    .link-btn:hover { text-decoration: underline; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tab { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-weight: 700; font-size: .88rem; color: var(--mute); }
+    .tab.on { background: var(--p1-soft); border-color: var(--p1-line); color: var(--p1); }
+
+    /* Startseite */
+    .hero { text-align: center; padding: 10px 0 24px; }
+    .hero .tag { font-size: 1.05rem; font-weight: 800; color: var(--p1); }
+    .hero p { max-width: 560px; margin: 8px auto 0; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat { flex: 1 1 120px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .stat b { display: block; font-size: 1.5rem; color: var(--ink); line-height: 1.2; }
+    .stat span { font-size: .78rem; font-weight: 700; color: var(--mute); }
+
+    /* Spielstart */
+    .rule { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); }
+    .rule p { font-size: .88rem; }
+    .rule b { color: var(--ink); }
+    .yn { display: flex; gap: 6px; flex: 0 0 auto; }
+    .yn label { flex-direction: row; align-items: center; gap: 4px; font-size: .88rem; color: var(--text); }
+    .pick-list { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin-top: 10px; }
+    .pick-list label { flex-direction: row; align-items: center; gap: 8px; font-size: .88rem; font-weight: 600; color: var(--text); padding: 4px 0; }
+    .pick-list h3 { font-size: .8rem; color: var(--mute); margin: 10px 0 2px; }
+
+    /* Spieler-Karte */
+    .player { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+    .lvl { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; background: var(--p1-soft); border: 4px solid var(--p1); text-align: center; flex: 0 0 auto; }
+    .lvl b { font-size: 1.9rem; color: var(--p1); line-height: 1; display: block; }
+    .lvl span { font-size: .68rem; font-weight: 800; color: var(--mute); letter-spacing: .06em; }
+    .player-info { flex: 1 1 240px; }
+    .player-name { font-size: 1.3rem; font-weight: 800; color: var(--ink); }
+    .xpbar { height: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin: 8px 0 6px; }
+    .xpbar div { height: 100%; background: linear-gradient(90deg, var(--p1), var(--xp)); transition: width .4s; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { font-size: .72rem; font-weight: 800; border-radius: 999px; padding: 3px 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+    .chip.xp { background: var(--xp-soft); border-color: #fde68a; color: #92400e; }
+    :root[data-theme="dark"] .chip.xp { color: #fcd34d; border-color: #5c4a14; }
+    .chip.hard { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+    .next { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--p1-soft); border: 1px solid var(--p1-line); font-size: .9rem; }
+    .next b { color: var(--ink); }
+
+    /* Titel */
+    .titles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+    .title-item { display: flex; gap: 8px; align-items: center; font-size: .88rem; font-weight: 700; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--mute); }
+    .title-item.on { background: var(--xp-soft); border-color: #fde68a; color: var(--ink); }
+
+    /* Phasen & Quests */
+    details.phase { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; box-shadow: var(--shadow); overflow: hidden; }
+    details.phase > summary { list-style: none; cursor: pointer; padding: 16px 20px; display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+    details.phase > summary::-webkit-details-marker { display: none; }
+    .ph-title { font-weight: 800; color: var(--ink); }
+    .ph-sub { font-size: .82rem; font-weight: 600; color: var(--mute); }
+    .ph-count { font-size: .8rem; font-weight: 800; color: var(--p1); white-space: nowrap; }
+    .ph-count.done { color: var(--ok); }
+    .ph-body { padding: 0 20px 16px; }
+    .ph-meta { font-size: .84rem; margin-bottom: 10px; }
+    .quest { display: grid; grid-template-columns: 40px 44px 1fr; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+    .qbox { width: 34px; height: 34px; border-radius: 9px; border: 2px solid var(--line); background: var(--bg); font-size: 1.1rem; line-height: 1; display: grid; place-items: center; color: var(--ok); }
+    .qbox:hover:not(:disabled) { border-color: var(--p1); }
+    .qbox:disabled { cursor: not-allowed; opacity: .55; }
+    .quest.done .qbox { background: var(--ok-soft); border-color: var(--ok); }
+    .qlvl { font-size: .78rem; font-weight: 800; color: var(--mute); padding-top: 7px; }
+    .qname { font-weight: 800; color: var(--ink); }
+    .qdesc { font-size: .88rem; }
+    .qdate { font-size: .74rem; font-weight: 700; color: var(--ok); margin-top: 2px; }
+    .quest.locked .qname, .quest.locked .qdesc { opacity: .55; }
+    .milestone { margin-top: 10px; font-size: .84rem; font-weight: 800; color: var(--mute); }
+    .milestone.on { color: var(--ok); }
+
+    .legend { text-align: center; border: 3px solid var(--xp); background: var(--xp-soft); }
+    .legend h2 { font-size: 1.3rem; margin-bottom: 8px; }
+
+    .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .account-who { font-size: .88rem; font-weight: 600; }
+    .account-who b { color: var(--ink); }
+
+    @media (max-width: 760px) {
+        body { padding: 0 10px 28px; }
+        .sticky-header { padding: 10px 0 8px; margin-bottom: 14px; }
+        .grid2 { grid-template-columns: 1fr; }
+        .box { padding: 16px; border-radius: 10px; }
+        details.phase > summary { padding: 14px 16px; }
+        .ph-body { padding: 0 16px 14px; }
+        .quest { grid-template-columns: 38px 1fr; }
+        .qlvl { display: none; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="sticky-header">
+        <div>
+            <h1>🎮 The Real World</h1>
+            <div class="sub">Quest Log · Offline Edition</div>
+        </div>
+        <div class="header-actions">
+            <button id="logoutBtn" class="icon-btn" type="button" aria-label="Abmelden" title="Abmelden" hidden>🚪</button>
+            <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+        </div>
+    </header>
+
+    <div id="setupHint" class="banner" hidden>⚙️ Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</div>
+    <div id="offlineHint" class="banner" hidden>📴 Offline – du siehst den zuletzt geladenen Spielstand.</div>
+
+    <!-- Nicht angemeldet -->
+    <section id="viewLoggedOut" hidden>
+        <div class="hero">
+            <div class="tag">100 Quests. 100 Level. 1 Spieler. Unendlich XP.</div>
+            <p>Draußen wartet eine offene Welt voller Quests. Jede einzelne bringt XP, und mit jedem Abschluss steigst du ein Level auf.</p>
+        </div>
+        <div class="grid2">
+            <div class="box">
+                <div class="tabs" role="tablist">
+                    <button class="tab on" type="button" id="tabLogin" role="tab">Anmelden</button>
+                    <button class="tab" type="button" id="tabSignup" role="tab">Konto erstellen</button>
+                </div>
+                <form id="loginForm">
+                    <label>E-Mail<input type="email" id="loginEmail" autocomplete="username" required></label>
+                    <label>Passwort<input type="password" id="loginPassword" autocomplete="current-password" required></label>
+                    <button class="btn" type="submit" id="loginBtn">Anmelden</button>
+                    <button class="link-btn" type="button" id="showReset">Passwort vergessen?</button>
+                </form>
+                <form id="signupForm" hidden>
+                    <label>Anzeigename<input type="text" id="signupName" autocomplete="nickname" maxlength="40" required></label>
+                    <label>E-Mail<input type="email" id="signupEmail" autocomplete="username" required></label>
+                    <label>Passwort (mind. 8 Zeichen)<input type="password" id="signupPassword" autocomplete="new-password" minlength="8" required></label>
+                    <button class="btn" type="submit" id="signupBtn">Konto erstellen</button>
+                </form>
+                <form id="resetForm" hidden>
+                    <label>E-Mail für den Link zum Zurücksetzen<input type="email" id="resetEmail" autocomplete="username" required></label>
+                    <button class="btn" type="submit">Link senden</button>
+                    <button class="link-btn" type="button" id="hideReset">← Zurück zur Anmeldung</button>
+                </form>
+                <div id="loginMsg" class="msg" hidden></div>
+            </div>
+            <div class="box">
+                <h2>🌍 Die Welt ist offen</h2>
+                <p class="note">Kein Zeitlimit. Kein Zwang. Kein „Game Over“. Du entscheidest, wann du spielst.</p>
+                <div class="stats" id="publicStats"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Neues Passwort nach Klick auf den E-Mail-Link -->
+    <section id="viewRecovery" hidden>
+        <div class="box">
+            <h2>🔑 Neues Passwort festlegen</h2>
+            <p class="note">Bitte gib dein neues Passwort ein (mind. 8 Zeichen).</p>
+            <form id="recoveryForm" style="max-width:360px">
+                <label>Neues Passwort<input type="password" id="recoveryPw" autocomplete="new-password" minlength="8" required></label>
+                <button class="btn" type="submit">Passwort speichern</button>
+            </form>
+            <div id="recoveryMsg" class="msg" hidden></div>
+        </div>
+    </section>
+
+    <!-- Spielstart: Spielerdaten + Grundregeln -->
+    <section id="viewSetup" hidden>
+        <div class="box">
+            <h2>🕹️ Willkommen, Spieler.</h2>
+            <p class="note">Bevor das Abenteuer startet, legst du deine Spielerdaten und die Grundregeln fest. Die Regeln lassen sich nach dem Spielstart nicht mehr ändern.</p>
+            <form id="setupForm">
+                <div class="grid2">
+                    <label>Spielername<input type="text" id="setupName" maxlength="40" required></label>
+                    <label>Alter<input type="number" id="setupAge" min="1" max="130"></label>
+                </div>
+                <div class="rule">
+                    <p><b>Starthilfe:</b> Quests, die bereits vor Spielbeginn abgeschlossen wurden, dürfen beim Start als abgeschlossen markiert werden.</p>
+                    <div class="yn"><label><input type="radio" name="starthilfe" value="1"> Ja</label><label><input type="radio" name="starthilfe" value="0" checked> Nein</label></div>
+                </div>
+                <div class="rule">
+                    <p><b>Hardcore Mode:</b> Die Quests müssen in der vorgegebenen Reihenfolge erledigt werden. Quest 44 erst, wenn 1 bis 43 abgeschlossen sind.</p>
+                    <div class="yn"><label><input type="radio" name="hardcore" value="1"> Ja</label><label><input type="radio" name="hardcore" value="0" checked> Nein</label></div>
+                </div>
+                <div id="pickWrap" hidden>
+                    <p class="note" style="margin:6px 0 0">Markiere, was du schon erledigt hast:</p>
+                    <div class="pick-list" id="pickList"></div>
+                </div>
+                <button class="btn" type="submit" id="startBtn" style="margin-top:8px">▶️ Spiel starten</button>
+            </form>
+            <div id="setupMsg" class="msg" hidden></div>
+        </div>
+    </section>
+
+    <!-- Das Spiel -->
+    <section id="viewGame" hidden>
+        <div class="box legend" id="legendBox" hidden>
+            <h2>🏆 ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</h2>
+            <p><b>Status:</b> 100/100 Quests abgeschlossen · <b>Rang:</b> Legendary World Traveler (Level 100) · <b>Achievement Score:</b> 10.000 G</p>
+            <p style="margin-top:8px">New Game Plus kann jetzt starten.</p>
+        </div>
+
+        <div class="box">
+            <div class="player">
+                <div class="lvl"><div><span>LEVEL</span><b id="lvlNum">0</b></div></div>
+                <div class="player-info">
+                    <div class="player-name" id="playerName"></div>
+                    <div class="xpbar" aria-hidden="true"><div id="xpFill" style="width:0"></div></div>
+                    <div class="chips" id="playerChips"></div>
+                </div>
+            </div>
+            <div class="next" id="nextQuest" hidden></div>
+        </div>
+
+        <div class="box">
+            <h2>🎖️ Freigeschaltete Titel</h2>
+            <p class="note">Ein Titel wird freigeschaltet, sobald alle Quests einer Phase abgeschlossen sind.</p>
+            <div class="titles" id="titleList"></div>
+        </div>
+
+        <div id="phaseList"></div>
+        <div id="gameMsg" class="msg" hidden></div>
+
+        <div class="box" style="margin-top:20px">
+            <h2>📝 Gedanken & Notizen</h2>
+            <p class="note">Wird automatisch gespeichert, wenn du das Feld verlässt.</p>
+            <textarea id="notes" aria-label="Gedanken und Notizen"></textarea>
+            <div id="notesMsg" class="msg" hidden></div>
+        </div>
+
+        <div class="box">
+            <div class="account">
+                <div class="account-who">Angemeldet als <b id="userEmail"></b></div>
+                <button class="btn-ghost" id="logoutBtn2" type="button">🚪 Abmelden</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const show = (el, on = true) => { el.hidden = !on; };
+    function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
+    const VIEWS = ['#viewLoggedOut', '#viewRecovery', '#viewSetup', '#viewGame'];
+    const only = id => VIEWS.forEach(v => show($(v), v === id));
+    const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('de-DE') : '';
+    const fmtNum = n => Number(n || 0).toLocaleString('de-DE');
+
+    /* Hell/Dunkel */
+    function applyTheme(dark, save) {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        $('#themeToggle').textContent = dark ? '☀️' : '🌙';
+        $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#110f1a' : '#6d28d9';
+        if (save) { try { localStorage.setItem('rq_theme_v1', dark ? 'dark' : 'light'); } catch (e) {} }
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
+    $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
+
+    /* ───────── Nicht angemeldet ───────── */
+    async function renderLoggedOut() {
+        only('#viewLoggedOut'); show($('#logoutBtn'), false);
+        const s = await RQ.publicStats();
+        $('#publicStats').innerHTML = [
+            ['🎮', s ? fmtNum(s.players) : '–', 'Spieler'],
+            ['✅', s ? fmtNum(s.quests_done) : '–', 'Quests erledigt'],
+            ['🏆', s ? fmtNum(s.legends) : '–', 'Legenden']
+        ].map(([i, n, t]) => `<div class="stat"><b>${i} ${n}</b><span>${t}</span></div>`).join('');
+    }
+    function loginTab(signup) {
+        $('#tabLogin').classList.toggle('on', !signup); $('#tabSignup').classList.toggle('on', signup);
+        show($('#loginForm'), !signup); show($('#signupForm'), signup); show($('#resetForm'), false); msg($('#loginMsg'), '');
+    }
+    $('#tabLogin').onclick = () => loginTab(false);
+    $('#tabSignup').onclick = () => loginTab(true);
+
+    $('#loginForm').onsubmit = async e => {
+        e.preventDefault();
+        const btn = $('#loginBtn'); btn.disabled = true; msg($('#loginMsg'), '');
+        try { await RQ.signIn($('#loginEmail').value.trim(), $('#loginPassword').value); $('#loginPassword').value = ''; await route(); }
+        catch (err) { msg($('#loginMsg'), RQ.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
+    $('#signupForm').onsubmit = async e => {
+        e.preventDefault();
+        const btn = $('#signupBtn'); btn.disabled = true; msg($('#loginMsg'), '');
+        try {
+            const loggedIn = await RQ.signUp($('#signupEmail').value.trim(), $('#signupPassword').value, $('#signupName').value.trim());
+            $('#signupPassword').value = '';
+            if (loggedIn) await route();
+            else msg($('#loginMsg'), '📧 Fast geschafft! Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben.', true);
+        } catch (err) { msg($('#loginMsg'), RQ.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
+    $('#showReset').onclick = () => { show($('#loginForm'), false); show($('#resetForm')); $('#resetEmail').value = $('#loginEmail').value; msg($('#loginMsg'), ''); };
+    $('#hideReset').onclick = () => { show($('#resetForm'), false); show($('#loginForm')); msg($('#loginMsg'), ''); };
+    $('#resetForm').onsubmit = async e => {
+        e.preventDefault();
+        try { await RQ.resetPassword($('#resetEmail').value.trim()); msg($('#loginMsg'), '📧 Falls die Adresse bekannt ist, kommt gleich eine E-Mail mit einem Link.', true); }
+        catch (err) { msg($('#loginMsg'), RQ.errorText(err)); }
+    };
+
+    /* ───────── Passwort-Link aus der E-Mail ───────── */
+    let recovering = /type=recovery/.test(location.hash);
+    $('#recoveryForm').onsubmit = async e => {
+        e.preventDefault();
+        try { await RQ.updatePassword($('#recoveryPw').value); recovering = false; history.replaceState(null, '', location.pathname); route(); }
+        catch (err) { msg($('#recoveryMsg'), RQ.errorText(err)); }
+    };
+    RQ.onAuth(ev => { if (ev === 'PASSWORD_RECOVERY') { recovering = true; only('#viewRecovery'); } });
+
+    /* ───────── Spielstart ───────── */
+    let game = null;
+    const radio = name => document.querySelector(`input[name="${name}"]:checked`).value === '1';
+    function renderSetup() {
+        only('#viewSetup'); show($('#logoutBtn'));
+        const p = game.profile || {};
+        $('#setupName').value = p.player_name || p.display_name || '';
+        if (p.age) $('#setupAge').value = p.age;
+        $('#pickList').innerHTML = game.phases.map(ph => `<h3>${esc(ph.title)} · ${esc(ph.subtitle)}</h3>` +
+            game.quests.filter(q => q.phase_id === ph.id && q.level < 100).map(q =>
+                `<label><input type="checkbox" value="${q.level}"> ${q.level}. ${esc(q.name)}</label>`).join('')).join('');
+    }
+    document.querySelectorAll('input[name="starthilfe"]').forEach(r => r.onchange = () => show($('#pickWrap'), radio('starthilfe')));
+    $('#setupForm').onsubmit = async e => {
+        e.preventDefault();
+        const starthilfe = radio('starthilfe'), hardcore = radio('hardcore');
+        const alreadyDone = starthilfe ? [...$('#pickList').querySelectorAll('input:checked')].map(i => +i.value) : [];
+        const rules = `Starthilfe: ${starthilfe ? 'Ja' : 'Nein'}, Hardcore Mode: ${hardcore ? 'Ja' : 'Nein'}` + (alreadyDone.length ? `, ${alreadyDone.length} Quests schon erledigt` : '');
+        if (!confirm(`Spiel jetzt starten?\n\n${rules}\n\nDie Grundregeln sind danach fest.`)) return;
+        const btn = $('#startBtn'); btn.disabled = true; msg($('#setupMsg'), '');
+        try {
+            await RQ.startGame({ player_name: $('#setupName').value.trim(), age: +$('#setupAge').value || null, starthilfe, hardcore, alreadyDone });
+            await route();
+        } catch (err) { msg($('#setupMsg'), RQ.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
+
+    /* ───────── Das Spiel ───────── */
+    const isDone = l => !!game.progress[l];
+    const doneCount = () => Object.keys(game.progress).length;
+    function lockReason(level) {
+        if (isDone(level)) return '';
+        if (level === 100 && game.quests.some(q => q.level < 100 && !isDone(q.level))) return 'Erst nach Abschluss aller vorherigen Level';
+        if (game.profile.hardcore && game.quests.some(q => q.level < level && !isDone(q.level))) return 'Hardcore Mode: erst die vorherigen Quests';
+        return '';
+    }
+    const phaseDone = ph => game.quests.filter(q => q.phase_id === ph.id).every(q => isDone(q.level));
+
+    function renderGame(offline) {
+        only('#viewGame'); show($('#logoutBtn')); show($('#offlineHint'), !!offline);
+        const p = game.profile, n = doneCount();
+        $('#userEmail').textContent = p.display_name || game.email;
+        $('#lvlNum').textContent = n;
+        $('#playerName').textContent = p.player_name || p.display_name || 'Spieler';
+        $('#xpFill').style.width = n + '%';
+        $('#playerChips').innerHTML = [
+            `<span class="chip xp">⭐ ${fmtNum(n * 100)} G</span>`,
+            `<span class="chip">${n}/100 Quests</span>`,
+            p.game_started_at ? `<span class="chip">🗓️ Spielbeginn ${fmtDate(p.game_started_at)}</span>` : '',
+            p.hardcore ? '<span class="chip hard">💀 Hardcore Mode</span>' : '',
+            p.starthilfe ? '<span class="chip">🤝 Starthilfe</span>' : ''
+        ].join('');
+        const next = game.quests.find(q => !isDone(q.level) && !lockReason(q.level));
+        show($('#nextQuest'), !!next);
+        if (next) $('#nextQuest').innerHTML = `🎯 <b>Nächste Quest: Level ${next.level} · ${esc(next.name)}</b><br>${esc(next.description)}`;
+        show($('#legendBox'), isDone(100));
+
+        $('#titleList').innerHTML = game.phases.map(ph => {
+            const on = phaseDone(ph);
+            return `<div class="title-item${on ? ' on' : ''}">${on ? '🏅' : '🔒'} ${esc(ph.reward_title)}</div>`;
+        }).join('');
+
+        const openIds = new Set([...document.querySelectorAll('details.phase[open]')].map(d => +d.dataset.id));
+        const firstOpen = (game.phases.find(ph => !phaseDone(ph)) || game.phases[0] || {}).id;
+        $('#phaseList').innerHTML = game.phases.map(ph => {
+            const qs = game.quests.filter(q => q.phase_id === ph.id);
+            const d = qs.filter(q => isDone(q.level)).length, all = d === qs.length;
+            const open = openIds.size ? openIds.has(ph.id) : ph.id === firstOpen;
+            return `<details class="phase" data-id="${ph.id}"${open ? ' open' : ''}>
+                <summary><div><div class="ph-title">${esc(ph.title)}</div><div class="ph-sub">${esc(ph.subtitle)}</div></div>
+                    <div class="ph-count${all ? ' done' : ''}">${all ? '✅ ' : ''}${d}/${qs.length}</div></summary>
+                <div class="ph-body">
+                    <p class="ph-meta">🧭 <b>Expeditions-Ziel:</b> ${esc(ph.goal)}<br>🎁 <b>Belohnung:</b> ${esc(ph.reward_title)}</p>
+                    ${qs.map(questRow).join('')}
+                    <div class="milestone${all ? ' on' : ''}">${all ? '🏁 MEILENSTEIN ERREICHT' : '⬜ Meilenstein noch offen'}</div>
+                </div></details>`;
+        }).join('');
+        $('#notes').value = p.notes || '';
+    }
+    function questRow(q) {
+        const pr = game.progress[q.level], lock = lockReason(q.level);
+        const label = pr ? `Level ${q.level} als offen markieren` : `Level ${q.level} abschließen`;
+        return `<div class="quest${pr ? ' done' : ''}${lock ? ' locked' : ''}">
+            <button class="qbox" type="button" data-level="${q.level}" aria-label="${esc(label)}" title="${esc(lock || label)}"${lock ? ' disabled' : ''}>${pr ? '✓' : lock ? '🔒' : ''}</button>
+            <div class="qlvl">Lv ${q.level}</div>
+            <div><div class="qname">${esc(q.name)}</div><div class="qdesc">${esc(q.description)}</div>
+                ${pr ? `<div class="qdate">${pr.before_start ? '🤝 Vor Spielbeginn erledigt' : '✅ Abgeschlossen am ' + fmtDate(pr.completed_at)}</div>` : ''}</div>
+        </div>`;
+    }
+    $('#phaseList').onclick = async e => {
+        const btn = e.target.closest('.qbox'); if (!btn || btn.disabled) return;
+        const level = +btn.dataset.level, q = game.quests.find(x => x.level === level);
+        msg($('#gameMsg'), '');
+        btn.disabled = true;
+        try {
+            if (isDone(level)) {
+                if (!confirm(`„${q.name}“ wieder als offen markieren?`)) { btn.disabled = false; return; }
+                await RQ.undoQuest(level);
+                delete game.progress[level];
+            } else {
+                game.progress[level] = await RQ.completeQuest(level);
+            }
+            RQ.cacheSet('game_' + game.profile.id, game);
+            renderGame(false);
+        } catch (err) { btn.disabled = false; msg($('#gameMsg'), RQ.errorText(err)); $('#gameMsg').scrollIntoView({ block: 'nearest' }); }
+    };
+    $('#notes').onchange = async () => {
+        try { await RQ.saveProfile({ notes: $('#notes').value }); game.profile.notes = $('#notes').value; msg($('#notesMsg'), '✅ Gespeichert.', true); setTimeout(() => msg($('#notesMsg'), ''), 2000); }
+        catch (err) { msg($('#notesMsg'), RQ.errorText(err)); }
+    };
+
+    async function logout() { await RQ.signOut(); game = null; route(); }
+    $('#logoutBtn').onclick = logout; $('#logoutBtn2').onclick = logout;
+
+    /* ───────── Routing ───────── */
+    async function route() {
+        show($('#offlineHint'), false);
+        if (recovering) return only('#viewRecovery');
+        if (!RQ.configured) { show($('#setupHint')); return renderLoggedOut(); }
+        const session = await RQ.getSession();
+        if (!session) return renderLoggedOut();
+        try { game = await RQ.loadGame(); }
+        catch (e) { only('#viewGame'); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
+        if (!game.quests.length) { only('#viewGame'); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
+        return game.profile && game.profile.game_started_at ? renderGame(game.offline) : renderSetup();
+    }
+
+    route();
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+</script>
+</body></html>
