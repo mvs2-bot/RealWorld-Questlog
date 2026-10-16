@@ -128,6 +128,7 @@
         if (/email not confirmed/i.test(m)) return 'Diese E-Mail ist noch nicht bestätigt. Schau in dein Postfach.';
         if (/already registered|already been registered/i.test(m)) return 'Für diese E-Mail gibt es schon ein Konto.';
         if (/password should be at least|weak password/i.test(m)) return 'Das Passwort ist zu kurz oder zu einfach (mind. 8 Zeichen empfohlen).';
+        if (/permission denied for table/i.test(m)) return 'Die Datenbank verweigert den Zugriff. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
         if (/rate limit|too many/i.test(m)) return 'Zu viele Versuche – bitte kurz warten.';
         if (isNetErr(e)) return 'Keine Verbindung zum Server. Bist du online?';
         return m;
