@@ -65,8 +65,8 @@
     }
 
     /* Spielstart: erst die per Starthilfe erledigten Quests eintragen, dann die Regeln festschreiben */
-    async function startGame({ player_name, age, starthilfe, hardcore, alreadyDone }) {
-        await saveProfile({ player_name, age, starthilfe, hardcore });
+    async function startGame({ player_name, birthday, starthilfe, hardcore, alreadyDone }) {
+        await saveProfile({ player_name, birthday, starthilfe, hardcore });
         if (starthilfe && alreadyDone.length) {
             check(await sb.from('quest_progress').insert(alreadyDone.map(level => ({ level, before_start: true }))));
         }
@@ -124,6 +124,90 @@
         throw new Error(m);
     }
 
+    /* ───────── Kontobereich ───────── */
+
+    /* Alter aus dem Geburtsdatum (YYYY-MM-DD), null wenn keins eingetragen ist */
+    const pad = n => String(n).padStart(2, '0');
+    function today() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+    function ageFrom(birthday) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthday || '');
+        if (!m) return null;
+        const [y, mo, d] = today().split('-').map(Number);
+        const age = y - +m[1] - ((mo < +m[2] || (mo === +m[2] && d < +m[3])) ? 1 : 0);
+        return age >= 0 ? age : null;
+    }
+
+    /* Profilbilder liegen im privaten Bucket "avatars" unter <user-id>/…, der Pfad steht in profiles.avatar_url.
+       Angezeigt werden sie über kurzlebige signierte Links; wer ein Bild sehen darf, prüft Supabase. */
+    const AVATARS = 'avatars';
+    const signed = {};   /* Pfad → { url, until } */
+    async function avatarUrls(paths) {
+        paths = [...new Set(paths.filter(Boolean))];
+        const now = Date.now(), missing = paths.filter(p => !signed[p] || signed[p].until < now);
+        if (sb && missing.length) {
+            try {
+                const rows = check(await sb.storage.from(AVATARS).createSignedUrls(missing, 3600));
+                rows.forEach(r => { if (r.signedUrl) signed[r.path] = { url: r.signedUrl, until: now + 50 * 60 * 1000 }; });
+            } catch (e) { /* offline oder Bucket fehlt → ohne Bild */ }
+        }
+        return Object.fromEntries(paths.filter(p => signed[p]).map(p => [p, signed[p].url]));
+    }
+
+    /* Foto quadratisch zuschneiden und auf max. 400 px verkleinern (JPEG), wie bei TravelBase */
+    async function shrink(file) {
+        const url = URL.createObjectURL(file);
+        try {
+            const img = await new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => fail(new Error('Das Bild konnte nicht gelesen werden. Bitte ein JPG oder PNG wählen.')); i.src = url; });
+            const s = Math.min(img.naturalWidth, img.naturalHeight), size = Math.min(400, s);
+            const c = document.createElement('canvas'); c.width = c.height = size;
+            c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, size, size);
+            return await new Promise((ok, fail) => c.toBlob(b => b ? ok(b) : fail(new Error('Das Bild konnte nicht verarbeitet werden.')), 'image/jpeg', 0.85));
+        } finally { URL.revokeObjectURL(url); }
+    }
+
+    /* Neues Profilbild hochladen; gibt das geänderte Profil zurück. Das alte Bild wird danach gelöscht. */
+    async function uploadAvatar(file, oldPath) {
+        needSb();
+        const session = await getSession();
+        const blob = await shrink(file);
+        const path = `${session.user.id}/avatar-${Date.now()}.jpg`;
+        check(await sb.storage.from(AVATARS).upload(path, blob, { contentType: 'image/jpeg' }));
+        let profile;
+        try { profile = await saveProfile({ avatar_url: path }); }
+        catch (e) { sb.storage.from(AVATARS).remove([path]).catch(() => {}); throw e; }
+        if (oldPath) sb.storage.from(AVATARS).remove([oldPath]).catch(() => {});
+        return profile;
+    }
+
+    async function removeAvatar(oldPath) {
+        const profile = await saveProfile({ avatar_url: null });
+        if (oldPath) sb.storage.from(AVATARS).remove([oldPath]).catch(() => {});
+        return profile;
+    }
+
+    /* ───────── Start-Dashboard ───────── */
+
+    /* Mitspieler (inkl. einem selbst) als Scoreboard sortiert + letzte Quest-Abschlüsse.
+       Liefert { players, activity, offline }; ohne Netz den zuletzt geladenen Stand. */
+    async function loadDashboard() {
+        needSb();
+        const session = await getSession();
+        const key = 'dash_' + session.user.id;
+        try {
+            const [players, activity] = await Promise.all([
+                sb.rpc('get_mitspieler').then(check),
+                sb.rpc('get_aktivitaet', { max_rows: 12 }).then(check)
+            ]);
+            const dash = { players: players || [], activity: activity || [] };
+            cacheSet(key, dash);
+            return { ...dash, offline: false };
+        } catch (e) {
+            const cached = cacheGet(key);
+            if (cached && isNetErr(e)) return { ...cached, offline: true };
+            throw e;
+        }
+    }
+
     /* Deutsche Fehlermeldungen für die häufigsten Fälle */
     function errorText(e) {
         const m = String(e && (e.message || e));
@@ -132,6 +216,10 @@
         if (/already registered|already been registered/i.test(m)) return 'Für diese E-Mail gibt es schon ein Konto.';
         if (/password should be at least|weak password/i.test(m)) return 'Das Passwort ist zu kurz oder zu einfach (mind. 8 Zeichen empfohlen).';
         if (/permission denied for table/i.test(m)) return 'Die Datenbank verweigert den Zugriff. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
+        if (/could not find the function|bucket not found|column .*(birthday|show_avatar|avatar_url|visible)|(birthday|show_avatar|avatar_url|visible).* column/i.test(m))
+            return 'Für Dashboard und Kontobereich fehlt noch die Datenbank-Erweiterung. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
+        if (/row-level security/i.test(m)) return 'Keine Berechtigung für diese Aktion.';
+        if (/payload too large|exceeded the maximum|too large/i.test(m)) return 'Das Bild ist zu groß.';
         if (/rate limit|too many/i.test(m)) return 'Zu viele Versuche – bitte kurz warten.';
         if (isNetErr(e)) return 'Keine Verbindung zum Server. Bist du online?';
         return m;
@@ -139,5 +227,6 @@
 
     window.RQ = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicStats, loadGame, saveProfile, startGame,
         completeQuest, undoQuest, saveQuestNote, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, gm,
+        today, ageFrom, avatarUrls, uploadAvatar, removeAvatar, loadDashboard,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();

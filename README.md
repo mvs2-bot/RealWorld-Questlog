@@ -12,7 +12,7 @@ in Supabase (Projekt `realworld-questlog`) und werden erst nach dem Login gelade
 ## Aufbau
 
 ```
-index.html               Startseite mit Login, Spielstart und Questlog
+index.html               Login, Spielstart, Start-Dashboard, Questlog und Kontobereich
 gamemaster.html          Gamemaster-Bereich: Konten anlegen, ansehen, ändern, löschen
 shared/style.css         gemeinsames Aussehen beider Seiten
 shared/config.js         Supabase-URL + Publishable Key (dürfen öffentlich sein)
@@ -39,6 +39,22 @@ supabase/functions/      Edge Function "gamemaster" für die Kontenverwaltung
 9. Den ersten Gamemaster unter Authentication → Users → „Add user“ anlegen (Auto Confirm) und im SQL Editor
    freischalten: `update public.profiles set role = 'gamemaster' where id = (select id from auth.users where email = '…');`
    Alle weiteren Konten legt der Gamemaster danach auf `gamemaster.html` an.
+
+## Start-Dashboard und Kontobereich
+
+Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und **👤 Konto**.
+
+- **Start**: eigenes Level mit Titel-Fortschritt und nächster Quest (direkt abhakbar), die Mitspieler,
+  ein Scoreboard (Level, Titel, zuletzt abgeschlossene Quest), die letzten Quest-Abschlüsse der Gruppe,
+  Gruppen-Zahlen (Quests gesamt, diese Woche, Wochen-Champion) und ein Hinweis, wenn jemand Geburtstag hat.
+- **Konto**: Profilbild hochladen (wird wie bei TravelBase quadratisch auf 400 px verkleinert), Spielername,
+  Geburtsdatum (das Alter rechnet die Seite selbst aus), Passwort ändern und zwei Schalter:
+  - *Für Mitspieler sichtbar*: aus = man fehlt bei allen anderen in Dashboard, Scoreboard und Aktivität,
+    auch bei Gamemastern. Die Kontenverwaltung auf `gamemaster.html` listet weiterhin alle Konten.
+  - *Profilbild für Mitspieler sichtbar*: aus = die anderen sehen nur die Initialen.
+- Die Daten der anderen liefern die Datenbank-Funktionen `get_mitspieler` und `get_aktivitaet`; Geburtsdatum,
+  E-Mail und Notizen anderer Spieler verlassen die Datenbank nicht. Profilbilder liegen im privaten
+  Storage-Bucket `avatars`, wer welches Bild sehen darf, prüft Supabase selbst.
 
 ## Rollen
 
