@@ -94,16 +94,6 @@
         if (error) throw error;
     }
 
-    /* Registrierung: Supabase schickt eine Bestätigungs-Mail (sofern im Dashboard aktiviert).
-       Rückgabe true = sofort angemeldet, false = erst E-Mail bestätigen. */
-    async function signUp(email, password, displayName) {
-        needSb();
-        const emailRedirectTo = location.origin + location.pathname.replace(/[^/]*$/, '');
-        const { data, error } = await sb.auth.signUp({ email, password, options: { data: { display_name: displayName }, emailRedirectTo } });
-        if (error) throw error;
-        return !!data.session;
-    }
-
     async function signOut() {
         clearCache();
         if (sb) { try { await sb.auth.signOut(); } catch (e) {} }
@@ -121,6 +111,19 @@
         if (error) throw error;
     }
 
+    /* Gamemaster-Bereich: Konten verwalten über die Edge Function "gamemaster".
+       Die prüft selbst, ob der Aufrufer Gamemaster ist; der geheime Schlüssel bleibt in Supabase. */
+    async function gm(action, payload = {}) {
+        needSb();
+        const { data, error } = await sb.functions.invoke('gamemaster', { body: { action, ...payload } });
+        if (!error) return data;
+        let m = error.message;
+        try { const b = await error.context.json(); if (b && b.error) m = b.error; } catch (e) {}
+        if (error.name === 'FunctionsFetchError' || error.name === 'FunctionsRelayError' || /requested function was not found/i.test(m))
+            m = 'Die Gamemaster-Funktion ist nicht erreichbar. Ist sie in Supabase unter Edge Functions als „gamemaster“ veröffentlicht?';
+        throw new Error(m);
+    }
+
     /* Deutsche Fehlermeldungen für die häufigsten Fälle */
     function errorText(e) {
         const m = String(e && (e.message || e));
@@ -135,6 +138,6 @@
     }
 
     window.RQ = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicStats, loadGame, saveProfile, startGame,
-        completeQuest, undoQuest, saveQuestNote, signIn, signUp, signOut, resetPassword, updatePassword, clearCache, errorText,
+        completeQuest, undoQuest, saveQuestNote, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, gm,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
