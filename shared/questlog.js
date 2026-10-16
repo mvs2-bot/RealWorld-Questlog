@@ -35,6 +35,8 @@
         } catch (e) { return cacheGet('stats'); }
     }
 
+    const PROGRESS = 'level, completed_at, before_start, note';
+
     /* Kompletter Spielstand des angemeldeten Spielers:
        { profile, phases, quests, progress: { [level]: row }, offline } */
     async function loadGame() {
@@ -46,7 +48,7 @@
                 sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle().then(check),
                 sb.from('phases').select('*').order('id').then(check),
                 sb.from('quests').select('*').order('level').then(check),
-                sb.from('quest_progress').select('level, completed_at, before_start, note').then(check)
+                sb.from('quest_progress').select(PROGRESS).eq('user_id', session.user.id).then(check)
             ]);
             const game = { profile, phases, quests, progress: Object.fromEntries(progress.map(p => [p.level, p])), email: session.user.email };
             cacheSet(key, game);
@@ -73,19 +75,38 @@
         return saveProfile({ game_started_at: new Date().toISOString() });
     }
 
-    async function completeQuest(level) {
+    /* Quest-Fortschritt eines Spielers. userId fehlt → der angemeldete Spieler selbst;
+       fremde Questlogs darf nur der Gamemaster ändern (prüft die Datenbank). */
+    async function uid(userId) { return userId || (await getSession()).user.id; }
+
+    async function completeQuest(level, userId) {
         needSb();
-        return check(await sb.from('quest_progress').insert({ level }).select('level, completed_at, before_start, note').single());
+        return check(await sb.from('quest_progress').insert({ level, user_id: await uid(userId) }).select(PROGRESS).single());
     }
 
-    async function undoQuest(level) {
+    async function undoQuest(level, userId) {
         needSb();
-        check(await sb.from('quest_progress').delete().eq('level', level));
+        check(await sb.from('quest_progress').delete().eq('user_id', await uid(userId)).eq('level', level));
     }
 
-    async function saveQuestNote(level, note) {
+    /* Abschlussdatum und/oder Kommentar ändern: fields = { completed_at?, note? } */
+    async function updateQuest(level, fields, userId) {
         needSb();
-        check(await sb.from('quest_progress').update({ note }).eq('level', level));
+        const rows = check(await sb.from('quest_progress').update(fields).eq('user_id', await uid(userId)).eq('level', level).select(PROGRESS));
+        if (!rows || !rows.length) throw new Error('Keine Berechtigung für diese Aktion.');
+        return rows[0];
+    }
+
+    /* Questlog eines anderen Spielers (nur wenn freigegeben, oder als Gamemaster):
+       { owner: { id, name, role, avatar_url, hardcore, starthilfe, game_started_at, visible, share_questlog, can_edit },
+         progress: { [level]: row } } – null, wenn man es nicht sehen darf */
+    async function loadPlayerLog(userId) {
+        needSb();
+        const rows = check(await sb.rpc('get_questlog_owner', { owner: userId }));
+        const owner = rows && rows[0];
+        if (!owner) return null;
+        const progress = check(await sb.from('quest_progress').select(PROGRESS).eq('user_id', userId));
+        return { owner, progress: Object.fromEntries(progress.map(p => [p.level, p])) };
     }
 
     async function signIn(email, password) {
@@ -216,8 +237,8 @@
         if (/already registered|already been registered/i.test(m)) return 'Für diese E-Mail gibt es schon ein Konto.';
         if (/password should be at least|weak password/i.test(m)) return 'Das Passwort ist zu kurz oder zu einfach (mind. 8 Zeichen empfohlen).';
         if (/permission denied for table/i.test(m)) return 'Die Datenbank verweigert den Zugriff. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
-        if (/could not find the function|bucket not found|column .*(birthday|show_avatar|avatar_url|visible)|(birthday|show_avatar|avatar_url|visible).* column/i.test(m))
-            return 'Für Dashboard und Kontobereich fehlt noch die Datenbank-Erweiterung. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
+        if (/could not find the function|bucket not found|column .*(birthday|show_avatar|avatar_url|visible|share_questlog)|(birthday|show_avatar|avatar_url|visible|share_questlog).* column/i.test(m))
+            return 'Für diese Funktion fehlt noch die Datenbank-Erweiterung. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
         if (/row-level security/i.test(m)) return 'Keine Berechtigung für diese Aktion.';
         if (/payload too large|exceeded the maximum|too large/i.test(m)) return 'Das Bild ist zu groß.';
         if (/rate limit|too many/i.test(m)) return 'Zu viele Versuche – bitte kurz warten.';
@@ -226,7 +247,7 @@
     }
 
     window.RQ = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicStats, loadGame, saveProfile, startGame,
-        completeQuest, undoQuest, saveQuestNote, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, gm,
+        completeQuest, undoQuest, updateQuest, loadPlayerLog, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, gm,
         today, ageFrom, avatarUrls, uploadAvatar, removeAvatar, loadDashboard,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();

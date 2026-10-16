@@ -47,6 +47,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--p1-line); outlin
 :root[data-theme="dark"] .btn { color: #1e1035; }
 .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
 .btn-ghost:hover { background: var(--hover); border-color: var(--p1); }
+a.btn-ghost { text-decoration: none; }
 .link-btn { background: none; border: 0; color: var(--p1); font-weight: 700; font-size: .84rem; padding: 2px 0; align-self: flex-start; }
 .link-btn:hover { text-decoration: underline; }
 
@@ -111,6 +112,22 @@ details.phase > summary::-webkit-details-marker { display: none; }
 .qdesc { font-size: .88rem; }
 .qdate { font-size: .74rem; font-weight: 700; color: var(--ok); margin-top: 2px; }
 .quest.locked .qname, .quest.locked .qdesc { opacity: .55; }
+/* Emoji vor dem Quest-Namen, Kommentar, Bearbeiten */
+.qemo { font-weight: 400; margin-right: 2px; }
+.qnote { font-size: .84rem; margin-top: 4px; padding: 6px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; }
+.qedit-btn { background: none; border: 0; padding: 0 0 0 6px; font-size: .74rem; font-weight: 700; color: var(--p1); }
+.qedit-btn:hover { text-decoration: underline; }
+.qedit { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--p1-line); border-radius: 10px; background: var(--p1-soft); }
+.qedit label { max-width: 100%; }
+.qedit input[type=date] { align-self: flex-start; }
+.qedit textarea { min-height: 70px; }
+.qedit-actions { display: flex; gap: 14px; align-items: center; }
+.readonly .qbox:disabled { cursor: default; opacity: 1; }
+.readonly .quest.locked .qbox:disabled { opacity: .55; }
+.viewing { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: var(--p1-soft); border: 1px solid var(--p1-line); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 20px; font-size: .9rem; }
+.viewing > div { flex: 1 1 220px; }
+.viewing b { color: var(--ink); }
+.viewing small { color: var(--mute); font-weight: 600; }
 .milestone { margin-top: 10px; font-size: .84rem; font-weight: 800; color: var(--mute); }
 .milestone.on { color: var(--ok); }
 
@@ -158,6 +175,9 @@ details.phase > summary::-webkit-details-marker { display: none; }
 .mate .ava { width: 52px; height: 52px; }
 .mate b { font-size: .82rem; color: var(--ink); line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mate small { font-size: .72rem; font-weight: 700; color: var(--mute); }
+a.mate { text-decoration: none; border-radius: 10px; padding: 4px 2px; }
+a.mate:hover { background: var(--hover); }
+.mate .mate-log { color: var(--p1); }
 .board .row { display: grid; grid-template-columns: 36px 40px 1fr auto; gap: 12px; align-items: center; padding: 10px 8px; border-top: 1px solid var(--line); }
 .board .row:first-child { border-top: 0; }
 .board .row.me { background: var(--p1-soft); border-radius: 10px; border-top-color: transparent; }

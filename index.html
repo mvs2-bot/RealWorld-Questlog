@@ -191,6 +191,8 @@
                 <span><b>Für Mitspieler sichtbar</b><small>Du erscheinst bei den anderen im Dashboard, im Scoreboard und in der Aktivität. Ausgeschaltet sieht dich dort niemand, auch kein Gamemaster.</small></span></label>
             <label class="switch"><input type="checkbox" id="optAvatar">
                 <span><b>Profilbild für Mitspieler sichtbar</b><small>Ausgeschaltet sehen die anderen statt deines Fotos nur deine Initialen.</small></span></label>
+            <label class="switch"><input type="checkbox" id="optShare">
+                <span><b>Questlog für Mitspieler freigeben</b><small>Mitspieler können dich auf der Startseite anklicken und dein Questlog ansehen, aber nichts ändern. Gamemaster können jedes Questlog öffnen und bearbeiten.</small></span></label>
             <div id="privMsg" class="msg" hidden></div>
         </div>
 
@@ -221,6 +223,7 @@
 
     <!-- Das Spiel -->
     <section id="viewGame" hidden>
+        <div class="viewing" id="viewingBox" hidden></div>
         <div class="box legend" id="legendBox" hidden>
             <h2>🏆 ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</h2>
             <p><b>Status:</b> 100/100 Quests abgeschlossen · <b>Rang:</b> Legendary World Traveler (Level 100) · <b>Achievement Score:</b> 10.000 G</p>
@@ -248,7 +251,7 @@
         <div id="phaseList"></div>
         <div id="gameMsg" class="msg" hidden></div>
 
-        <div class="box" style="margin-top:20px">
+        <div class="box" id="notesBox" style="margin-top:20px">
             <h2>📝 Gedanken & Notizen</h2>
             <p class="note">Wird automatisch gespeichert, wenn du das Feld verlässt.</p>
             <textarea id="notes" aria-label="Gedanken und Notizen"></textarea>
@@ -291,6 +294,8 @@
         return 'am ' + fmtDate(iso);
     }
     const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('de-DE') : '';
+    const pad2 = n => String(n).padStart(2, '0');
+    const localDay = iso => { const d = new Date(iso); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
     const fmtNum = n => Number(n || 0).toLocaleString('de-DE');
 
     /* Hell/Dunkel */
@@ -351,7 +356,7 @@
         $('#setupAge').textContent = ageText($('#setupBirthday').value);
         $('#pickList').innerHTML = game.phases.map(ph => `<h3>${esc(ph.title)} · ${esc(ph.subtitle)}</h3>` +
             game.quests.filter(q => q.phase_id === ph.id && q.level < 100).map(q =>
-                `<label><input type="checkbox" value="${q.level}"> ${q.level}. ${esc(q.name)}</label>`).join('')).join('');
+                `<label><input type="checkbox" value="${q.level}"> ${q.level}. ${qLabel(q)}</label>`).join('')).join('');
     }
     $('#setupBirthday').oninput = () => { $('#setupAge').textContent = ageText($('#setupBirthday').value); };
     document.querySelectorAll('input[name="starthilfe"]').forEach(r => r.onchange = () => show($('#pickWrap'), radio('starthilfe')));
@@ -373,19 +378,54 @@
     };
 
     /* ───────── Das Spiel ───────── */
-    const isDone = l => !!game.progress[l];
-    const doneCount = () => Object.keys(game.progress).length;
+    /* Angezeigtes Questlog: das eigene (game) oder ein fremdes { profile, progress, owner, other: true }.
+       editable = darf abschließen, öffnen, Datum und Kommentar ändern (eigenes oder als Gamemaster). */
+    let cur = null, editing = null;
+    const isDone = l => !!cur.progress[l];
+    const doneCount = () => Object.keys(cur.progress).length;
+    const editable = () => !cur.other || !!cur.owner.can_edit;
+    const qLabel = q => (q.emoji ? `<span class="qemo" aria-hidden="true">${esc(q.emoji)}</span> ` : '') + esc(q.name);
+    const qLabelByLevel = (level, name) => { const q = game.quests.find(x => x.level === level); return q ? qLabel(q) : esc(name); };
     function lockReason(level) {
         if (isDone(level)) return '';
         if (level === 100 && game.quests.some(q => q.level < 100 && !isDone(q.level))) return 'Erst nach Abschluss aller vorherigen Level';
-        if (game.profile.hardcore && game.quests.some(q => q.level < level && !isDone(q.level))) return 'Hardcore Mode: erst die vorherigen Quests';
+        if (cur.profile.hardcore && game.quests.some(q => q.level < level && !isDone(q.level))) return 'Hardcore Mode: erst die vorherigen Quests';
         return '';
     }
     const phaseDone = ph => game.quests.filter(q => q.phase_id === ph.id).every(q => isDone(q.level));
 
+    /* Fremdes Questlog laden (#questlog/<konto-id>) */
+    async function renderOther(id) {
+        only('#viewGame'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), false);
+        ['#legendBox', '#notesBox'].forEach(s => show($(s), false));
+        show($('#viewingBox'), false);
+        $('#phaseList').innerHTML = '<div class="box"><p class="note" style="margin:0">⏳ Questlog wird geladen …</p></div>';
+        let r;
+        try { r = await RQ.loadPlayerLog(id); }
+        catch (err) { $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(err))}<br><a class="link-btn" href="#start">← Zurück zur Startseite</a></div>`; return; }
+        if (location.hash !== '#questlog/' + id) return;   /* inzwischen weitergeklickt */
+        if (!r) { $('#phaseList').innerHTML = '<div class="box"><h2>🔒 Nicht freigegeben</h2><p class="note">Dieses Questlog ist nicht für Mitspieler freigegeben.</p><a class="link-btn" href="#start">← Zurück zur Startseite</a></div>'; return; }
+        const o = r.owner;
+        cur = { other: true, owner: o, progress: r.progress,
+                profile: { id: o.id, player_name: o.name, hardcore: o.hardcore, starthilfe: o.starthilfe, game_started_at: o.game_started_at } };
+        editing = null;
+        const pic = o.avatar_url ? (await RQ.avatarUrls([o.avatar_url]))[o.avatar_url] : null;
+        if (location.hash !== '#questlog/' + id) return;
+        renderGame(false);
+        const gmEdit = o.can_edit;
+        const hints = [!o.game_started_at ? 'hat das Spiel noch nicht gestartet' : '', o.visible === false ? '👻 für Mitspieler ausgeblendet' : '', gmEdit && !o.share_questlog ? '🔒 nicht freigegeben' : ''].filter(Boolean);
+        $('#viewingBox').innerHTML = `<span class="ava">${avaHtml(o.name, pic)}</span>
+            <div><b>${gmEdit ? '🛡️ Gamemaster-Modus' : '👀 Nur ansehen'}</b>: Questlog von <b>${esc(o.name)}</b>${hints.length ? ` <span class="mute">· ${esc(hints.join(' · '))}</span>` : ''}
+            <br><small>${gmEdit ? 'Du kannst Quests abschließen, wieder öffnen und Datum oder Kommentar ändern. Die Spielregeln gelten weiter.' : 'Hier kannst du nichts ändern.'}</small></div>
+            <a class="link-btn" href="#start">← Zurück</a>`;
+        show($('#viewingBox'));
+    }
+
     function renderGame(offline) {
         only('#viewGame'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!offline);
-        const p = game.profile, n = doneCount();
+        show($('#viewingBox'), !!cur.other); show($('#notesBox'), !cur.other);
+        $('#phaseList').classList.toggle('readonly', !editable());
+        const p = cur.profile, n = doneCount();
         $('#lvlNum').textContent = n;
         $('#playerName').textContent = p.player_name || p.display_name || 'Spieler';
         $('#xpFill').style.width = n + '%';
@@ -398,7 +438,7 @@
         ].join('');
         const next = game.quests.find(q => !isDone(q.level) && !lockReason(q.level));
         show($('#nextQuest'), !!next);
-        if (next) $('#nextQuest').innerHTML = `🎯 <b>Nächste Quest: Level ${next.level} · ${esc(next.name)}</b><br>${esc(next.description)}`;
+        if (next) $('#nextQuest').innerHTML = `🎯 <b>Nächste Quest: Level ${next.level} · ${qLabel(next)}</b><br>${esc(next.description)}`;
         show($('#legendBox'), isDone(100));
 
         $('#titleList').innerHTML = game.phases.map(ph => {
@@ -418,37 +458,85 @@
                 <div class="ph-body">
                     <p class="ph-meta">🧭 <b>Expeditions-Ziel:</b> ${esc(ph.goal)}<br>🎁 <b>Belohnung:</b> ${esc(ph.reward_title)}</p>
                     ${qs.map(questRow).join('')}
-                    <div class="milestone${all ? ' on' : ''}">${all ? '🏁 MEILENSTEIN ERREICHT' : '⬜ Meilenstein noch offen'}</div>
+                    <div class="milestone${all ? ' on' : ''}">${all ? '🎁 MEILENSTEIN ERREICHT' : '⬜ Meilenstein noch offen'}</div>
                 </div></details>`;
         }).join('');
-        $('#notes').value = p.notes || '';
+        if (!cur.other) $('#notes').value = p.notes || '';
     }
     function questRow(q) {
-        const pr = game.progress[q.level], lock = lockReason(q.level);
+        const pr = cur.progress[q.level], lock = lockReason(q.level), canEdit = editable();
         const label = pr ? `Level ${q.level} als offen markieren` : `Level ${q.level} abschließen`;
+        const off = lock || !canEdit;
         return `<div class="quest${pr ? ' done' : ''}${lock ? ' locked' : ''}">
-            <button class="qbox" type="button" data-level="${q.level}" aria-label="${esc(label)}" title="${esc(lock || label)}"${lock ? ' disabled' : ''}>${pr ? '✓' : lock ? '🔒' : ''}</button>
+            <button class="qbox" type="button" data-level="${q.level}" aria-label="${esc(canEdit ? label : pr ? 'Abgeschlossen' : 'Offen')}" title="${esc(canEdit ? lock || label : '')}"${off ? ' disabled' : ''}>${pr ? '✓' : lock ? '🔒' : ''}</button>
             <div class="qlvl">Lv ${q.level}</div>
-            <div><div class="qname">${esc(q.name)}</div><div class="qdesc">${esc(q.description)}</div>
-                ${pr ? `<div class="qdate">${pr.before_start ? '🤝 Vor Spielbeginn erledigt' : '✅ Abgeschlossen am ' + fmtDate(pr.completed_at)}</div>` : ''}</div>
+            <div><div class="qname">${qLabel(q)}</div><div class="qdesc">${esc(q.description)}</div>
+                ${pr ? (editing === q.level && canEdit ? questEdit(q, pr) : `<div class="qdate">${pr.before_start ? '🤝 Vor Spielbeginn erledigt' : '✅ Abgeschlossen am ' + fmtDate(pr.completed_at)}${canEdit ? ` <button class="qedit-btn" type="button" data-edit="${q.level}" title="Abschlussdatum und Kommentar bearbeiten">✏️ ${pr.note ? 'Bearbeiten' : 'Datum / Kommentar'}</button>` : ''}</div>
+                ${pr.note ? `<div class="qnote">💬 ${esc(pr.note)}</div>` : ''}`) : ''}</div>
         </div>`;
     }
+    /* Abschlussdatum (nur bei Quests nach Spielbeginn) und Kommentar bearbeiten */
+    function questEdit(q, pr) {
+        const start = cur.profile.game_started_at ? localDay(cur.profile.game_started_at) : '';
+        return `<form class="qedit" data-level="${q.level}">
+            ${pr.before_start ? '<div class="qdate">🤝 Vor Spielbeginn erledigt</div>' :
+              `<label>Abschlussdatum<input type="date" name="day" required value="${localDay(pr.completed_at)}"${start ? ` min="${start}"` : ''} max="${RQ.today()}"></label>`}
+            <label>Kommentar<textarea name="note" maxlength="1000" rows="3" placeholder="Wie war's? Mit wem? Was ist hängen geblieben?">${esc(pr.note || '')}</textarea></label>
+            <div class="qedit-actions"><button class="btn" type="submit">Speichern</button><button class="link-btn" type="button" data-cancel>Abbrechen</button></div>
+        </form>`;
+    }
+    const otherId = () => cur.other ? cur.profile.id : undefined;
+    function progressChanged() {
+        if (!cur.other) RQ.cacheSet('game_' + game.profile.id, game);
+        dash = null;
+        renderGame(false);
+    }
     $('#phaseList').onclick = async e => {
+        const ed = e.target.closest('[data-edit]');
+        if (ed) {
+            editing = +ed.dataset.edit; msg($('#gameMsg'), ''); renderGame(false);
+            const f = document.querySelector(`form.qedit[data-level="${editing}"]`);
+            if (f) { f.scrollIntoView({ block: 'nearest' }); f.elements.note.focus(); }
+            return;
+        }
+        if (e.target.closest('[data-cancel]')) { editing = null; renderGame(false); return; }
         const btn = e.target.closest('.qbox'); if (!btn || btn.disabled) return;
         const level = +btn.dataset.level, q = game.quests.find(x => x.level === level);
+        const forWhom = cur.other ? ` für ${cur.profile.player_name}` : '';
         msg($('#gameMsg'), '');
         btn.disabled = true;
         try {
             if (isDone(level)) {
-                if (!confirm(`„${q.name}“ wieder als offen markieren?`)) { btn.disabled = false; return; }
-                await RQ.undoQuest(level);
-                delete game.progress[level];
+                if (!confirm(`„${q.name}“${forWhom} wieder als offen markieren?` + (cur.progress[level].note ? '\n\nDer Kommentar geht dabei verloren.' : ''))) { btn.disabled = false; return; }
+                await RQ.undoQuest(level, otherId());
+                delete cur.progress[level];
+                if (editing === level) editing = null;
             } else {
-                game.progress[level] = await RQ.completeQuest(level);
+                if (cur.other && !confirm(`„${q.name}“${forWhom} abschließen?`)) { btn.disabled = false; return; }
+                cur.progress[level] = await RQ.completeQuest(level, otherId());
             }
-            RQ.cacheSet('game_' + game.profile.id, game);
-            dash = null;
-            renderGame(false);
+            progressChanged();
+        } catch (err) { btn.disabled = false; msg($('#gameMsg'), RQ.errorText(err)); $('#gameMsg').scrollIntoView({ block: 'nearest' }); }
+    };
+    $('#phaseList').onsubmit = async e => {
+        const f = e.target.closest('form.qedit'); if (!f) return;
+        e.preventDefault();
+        const level = +f.dataset.level, pr = cur.progress[level], fields = {};
+        const note = f.elements.note.value.trim() || null;
+        if (note !== (pr.note || null)) fields.note = note;
+        if (f.elements.day && f.elements.day.value && f.elements.day.value !== localDay(pr.completed_at)) {
+            /* Neuer Tag, Uhrzeit bleibt; nie in der Zukunft */
+            const [y, m, d] = f.elements.day.value.split('-').map(Number), t = new Date(pr.completed_at);
+            t.setFullYear(y, m - 1, d);
+            fields.completed_at = new Date(Math.min(t.getTime(), Date.now())).toISOString();
+        }
+        msg($('#gameMsg'), '');
+        if (!Object.keys(fields).length) { editing = null; renderGame(false); return; }
+        const btn = f.querySelector('[type=submit]'); btn.disabled = true;
+        try {
+            cur.progress[level] = await RQ.updateQuest(level, fields, otherId());
+            editing = null;
+            progressChanged();
         } catch (err) { btn.disabled = false; msg($('#gameMsg'), RQ.errorText(err)); $('#gameMsg').scrollIntoView({ block: 'nearest' }); }
     };
     $('#notes').onchange = async () => {
@@ -498,12 +586,13 @@
         ].join('');
         const next = game.quests.find(q => !isDone(q.level) && !lockReason(q.level));
         show($('#dashNext'), !!next);
-        if (next) $('#dashNext').innerHTML = `<div>🎯 <b>Nächste Quest: Level ${next.level} · ${esc(next.name)}</b><br>${esc(next.description)}</div>
+        if (next) $('#dashNext').innerHTML = `<div>🎯 <b>Nächste Quest: Level ${next.level} · ${qLabel(next)}</b><br>${esc(next.description)}</div>
             <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.level}">✅ Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog →</a></div>`;
         if (isDone(100)) { show($('#dashNext')); $('#dashNext').innerHTML = '🏆 <b>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</b><br>Alle 100 Quests abgeschlossen. New Game Plus kann starten.'; }
     }
 
     async function renderDashboard() {
+        cur = game;
         only('#viewDashboard'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!game.offline);
         msg($('#dashMsg'), '');
         renderHero();
@@ -529,15 +618,16 @@
 
         /* Mitspieler (minimalistisch) */
         const mates = dash.players.filter(x => !x.is_me);
-        $('#mates').innerHTML = mates.length ? mates.map(x => `<div class="mate" title="${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}">
-                <span class="ava">${avaHtml(x.name, pic(x))}</span><b>${esc(x.name)}</b><small>${x.started ? 'Level ' + x.level : 'noch nicht gestartet'}</small></div>`).join('')
+        const mateTag = x => x.shared ? `a class="mate open" href="#questlog/${esc(x.id)}"` : 'div class="mate"';
+        $('#mates').innerHTML = mates.length ? mates.map(x => `<${mateTag(x)} title="${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}${x.shared ? ' · Questlog ansehen' : ''}">
+                <span class="ava">${avaHtml(x.name, pic(x))}</span><b>${esc(x.name)}</b><small>${x.started ? 'Level ' + x.level : 'noch nicht gestartet'}</small>${x.shared ? '<small class="mate-log">📜 Questlog</small>' : ''}</${x.shared ? 'a' : 'div'}>`).join('')
             : '<p class="note" style="margin:0">Noch keine Mitspieler zu sehen.</p>';
 
         /* Scoreboard */
         const medal = r => ['🥇', '🥈', '🥉'][r - 1] || r + '.';
         $('#board').innerHTML = dash.players.map(x => {
             const r = dash.players.filter(y => y.level > x.level).length + 1;
-            const last = x.last_level ? `Lv ${x.last_level} · ${esc(x.last_quest)} <span class="mute">· ${esc(ago(x.last_completed_at))}</span>` : '<span class="mute">Noch keine Quest abgeschlossen</span>';
+            const last = x.last_level ? `Lv ${x.last_level} · ${qLabelByLevel(x.last_level, x.last_quest)} <span class="mute">· ${esc(ago(x.last_completed_at))}</span>` : '<span class="mute">Noch keine Quest abgeschlossen</span>';
             return `<div class="row${x.is_me ? ' me' : ''}">
                 <div class="rank">${medal(r)}</div>
                 <span class="ava">${avaHtml(x.name, pic(x))}</span>
@@ -555,7 +645,7 @@
         $('#feed').innerHTML = dash.activity.length ? dash.activity.map(a => {
             const x = byId[a.user_id] || { name: 'Spieler:in' };
             return `<div class="feed-item"><span class="ava ava-sm">${avaHtml(x.name, pic(x))}</span>
-                <div><b>${x.is_me ? 'Du' : esc(x.name)}</b> ${x.is_me ? 'hast' : 'hat'} <b>Level ${a.level} · ${esc(a.quest)}</b> abgeschlossen<br><small>${esc(ago(a.completed_at))}</small></div></div>`;
+                <div><b>${x.is_me ? 'Du' : esc(x.name)}</b> ${x.is_me ? 'hast' : 'hat'} <b>Level ${a.level} · ${qLabelByLevel(a.level, a.quest)}</b> abgeschlossen<br><small>${esc(ago(a.completed_at))}</small></div></div>`;
         }).join('') : '<p class="note" style="margin:0">Noch keine Quests abgeschlossen. Wer macht den Anfang?</p>';
 
         /* Gruppe */
@@ -597,6 +687,7 @@
         $('#userEmail').textContent = game.email || '';
         $('#optVisible').checked = p.visible !== false;
         $('#optAvatar').checked = p.show_avatar !== false;
+        $('#optShare').checked = p.share_questlog === true;
         $('#accRules').innerHTML = [
             p.game_started_at ? `<span class="chip">🗓️ Spielbeginn ${fmtDate(p.game_started_at)}</span>` : '',
             `<span class="chip">🤝 Starthilfe: ${p.starthilfe ? 'Ja' : 'Nein'}</span>`,
@@ -639,6 +730,7 @@
     }
     $('#optVisible').onchange = () => savePrivacy('visible', $('#optVisible'));
     $('#optAvatar').onchange = () => savePrivacy('show_avatar', $('#optAvatar'));
+    $('#optShare').onchange = () => savePrivacy('share_questlog', $('#optShare'));
 
     $('#pwForm').onsubmit = async e => {
         e.preventDefault();
@@ -650,13 +742,16 @@
     /* ───────── Bereiche (Start / Questlog / Konto) ───────── */
     function showTab() {
         const tab = location.hash.replace('#', '');
-        if (tab === 'questlog') return renderGame(game.offline);
+        const m = /^questlog\/([0-9a-z-]+)$/i.exec(tab);
+        if (m && m[1] !== game.profile.id) return renderOther(m[1]);
+        cur = game;
+        if (m || tab === 'questlog') { editing = null; return renderGame(game.offline); }
         if (tab === 'konto') return renderAccount();
         return renderDashboard();
     }
     window.addEventListener('hashchange', () => {
         if (recovering || !game || !game.profile || !game.profile.game_started_at) return;
-        if (!/^#(questlog|konto)$/.test(location.hash)) dash = null;   /* Dashboard immer frisch laden */
+        if (!/^#(questlog|konto)/.test(location.hash)) dash = null;   /* Dashboard immer frisch laden */
         showTab(); window.scrollTo(0, 0);
     });
 
