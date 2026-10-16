@@ -2,7 +2,7 @@
    - Eigene Dateien: erst Netz (max. 4 s), sonst gespeicherte Version → Updates kommen sofort an
    - Bibliotheken/Schriften: aus dem Speicher
    - Supabase-Anfragen werden NICHT gespeichert (die App merkt sich den Spielstand selbst, pro Benutzer) */
-const P="realworld-questlog-",V=P+"v6";
+const P="realworld-questlog-",V=P+"v7";
 const CORE=['./','index.html','gamemaster.html','manifest.json','shared/style.css','shared/config.js','shared/questlog.js','icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png','icons/apple-touch-icon.png','icons/favicon-32.png'];
 const EXTRA=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js","https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"];
 const CDN=/fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net/;

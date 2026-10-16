@@ -146,8 +146,10 @@ details.phase > summary::-webkit-details-marker { display: none; }
 .tabs a.on { background: var(--p1); border-color: var(--p1); color: #fff; }
 :root[data-theme="dark"] .tabs a.on { color: #1e1035; }
 .me-btn { display: inline-flex; align-items: center; justify-content: center; }
-.me-btn.has-photo { padding: 0; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; }
-.me-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Mit Profilbild gleiche Größe und Form wie die anderen Header-Buttons: ein unsichtbares 👤 gibt die Maße vor, das Bild füllt die Fläche */
+.me-btn.has-photo { position: relative; overflow: hidden; }
+.me-btn.has-photo::before { content: '👤'; visibility: hidden; }
+.me-btn img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* Profilbild / Initialen */
 .ava { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--p1-soft); border: 2px solid var(--line); }
