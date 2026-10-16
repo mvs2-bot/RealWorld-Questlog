@@ -56,7 +56,7 @@ async function listAccounts() {
         users.push(...batch);
         if (batch.length < 1000) break;
     }
-    const profiles = check(await admin.from('profiles').select('id, role, display_name, player_name, age, starthilfe, hardcore, game_started_at')) ?? [];
+    const profiles = check(await admin.from('profiles').select('id, role, display_name, player_name, age, birthday, visible, starthilfe, hardcore, game_started_at')) ?? [];
     const progress = check(await admin.from('quest_progress').select('user_id')) ?? [];
     // deno-lint-ignore no-explicit-any
     const byId = new Map<string, any>(profiles.map((p: any) => [p.id, p]));
@@ -74,6 +74,8 @@ async function listAccounts() {
             display_name: p.display_name ?? null,
             player_name: p.player_name ?? null,
             age: p.age ?? null,
+            birthday: p.birthday ?? null,
+            visible: p.visible ?? true,
             starthilfe: !!p.starthilfe,
             hardcore: !!p.hardcore,
             game_started_at: p.game_started_at ?? null,
@@ -109,6 +111,11 @@ async function updateAccount(meId: string, b: Record<string, unknown>) {
         if (age !== null && !(Number.isInteger(age) && age >= 1 && age <= 130)) throw new Fail('Das Alter muss zwischen 1 und 130 liegen.');
         profile.age = age;
     }
+    if (b.birthday !== undefined) {
+        const d = b.birthday === null || b.birthday === '' ? null : String(b.birthday);
+        if (d !== null && !(/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '1900-01-01' && d <= new Date().toISOString().slice(0, 10))) throw new Fail('Das Geburtsdatum ist ungültig.');
+        profile.birthday = d;
+    }
     if (Object.keys(auth).length) check(await admin.auth.admin.updateUserById(id, auth));
     if (Object.keys(profile).length) check(await admin.from('profiles').update(profile).eq('id', id));
     return { id };
@@ -118,6 +125,10 @@ async function deleteAccount(meId: string, b: Record<string, unknown>) {
     const id = text(b.id, 64);
     if (!id) throw new Fail('Konto fehlt.');
     if (id === meId) throw new Fail('Dein eigenes Konto kannst du hier nicht löschen.');
+    // Profilbilder im Ordner <id>/ mitlöschen, sonst bleiben sie im Speicher liegen
+    // (Fehler hier ignorieren, z. B. wenn es den Bucket noch nicht gibt)
+    const { data: files } = await admin.storage.from('avatars').list(id, { limit: 1000 });
+    if (files?.length) await admin.storage.from('avatars').remove(files.map((f) => `${id}/${f.name}`));
     check(await admin.auth.admin.deleteUser(id));
     return { id };
 }

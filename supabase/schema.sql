@@ -5,8 +5,10 @@
 -- Tabellen
 --   phases          6 Phasen (Noob Phase … The final Step) inkl. Belohnungs-Titel
 --   quests          100 Quests, eine pro Level
---   profiles        ein Spieler pro Benutzerkonto (Rolle, Spielername, Grundregeln, Notizen)
+--   profiles        ein Spieler pro Benutzerkonto (Rolle, Spielername, Geburtsdatum, Profilbild,
+--                   Sichtbarkeit, Grundregeln, Notizen)
 --   quest_progress  welche Quests ein Spieler wann abgeschlossen hat
+--   Storage-Bucket "avatars"  Profilbilder (privat), je Spieler im Ordner <user-id>/
 --
 -- Spielregeln, die die Datenbank selbst durchsetzt
 --   - Grundregeln (Starthilfe, Hardcore Mode) sind nach Spielbeginn fest.
@@ -55,6 +57,20 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists role text not null default 'spieler';
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check check (role in ('gamemaster', 'spieler'));
+
+-- Kontobereich (nachträglich ergänzt): Geburtsdatum statt Alter, Profilbild, Sichtbarkeit
+--   birthday     daraus rechnet die Seite das Alter aus (die alte Spalte age bleibt nur als Rückfall)
+--   avatar_url   Pfad im Bucket "avatars", immer im eigenen Ordner <user-id>/…
+--   show_avatar  Mitspieler dürfen das Profilbild sehen
+--   visible      Mitspieler (auch Gamemaster) sehen einen im Dashboard, Scoreboard und in der Aktivität
+alter table public.profiles add column if not exists birthday    date;
+alter table public.profiles add column if not exists avatar_url  text;
+alter table public.profiles add column if not exists show_avatar boolean not null default true;
+alter table public.profiles add column if not exists visible     boolean not null default true;
+alter table public.profiles drop constraint if exists profiles_birthday_check;
+alter table public.profiles add constraint profiles_birthday_check check (birthday is null or birthday >= date '1900-01-01');
+alter table public.profiles drop constraint if exists profiles_avatar_check;
+alter table public.profiles add constraint profiles_avatar_check check (avatar_url is null or avatar_url like id::text || '/%');
 
 create table if not exists public.quest_progress (
     user_id       uuid not null default auth.uid() references auth.users(id) on delete cascade,
@@ -218,3 +234,127 @@ $$;
 
 revoke all on function public.get_public_stats() from public;
 grant execute on function public.get_public_stats() to anon, authenticated;
+
+-- ───────────────────────── Start-Dashboard ─────────────────────────
+
+-- Mitspieler & Scoreboard. Jeder sieht sich selbst und alle, die "visible" eingeschaltet haben.
+-- Ausgeblendete Spieler fehlen hier für alle anderen, auch für Gamemaster (die Kontenverwaltung
+-- auf gamemaster.html listet weiterhin alle Konten). Das Profilbild nur, wenn "show_avatar" an ist.
+-- Geburtsdatum und Alter verlassen die Datenbank nicht, nur "hat heute Geburtstag".
+drop function if exists public.get_mitspieler();
+create or replace function public.get_mitspieler()
+returns table (
+    id                 uuid,
+    name               text,
+    is_me              boolean,
+    role               text,
+    level              int,
+    title              text,         -- höchster freigeschalteter Titel
+    avatar_url         text,
+    hardcore           boolean,
+    started            boolean,
+    visible            boolean,
+    quests_7d          int,          -- in den letzten 7 Tagen abgeschlossen
+    last_level         int,          -- zuletzt abgeschlossene Quest (ohne Starthilfe)
+    last_quest         text,
+    last_completed_at  timestamptz,
+    birthday_today     boolean
+)
+language sql stable security definer set search_path = public as $$
+    with prog as (
+        select user_id, count(*)::int as level,
+               count(*) filter (where not before_start and completed_at > now() - interval '7 days')::int as quests_7d
+        from public.quest_progress group by user_id
+    ), last as (
+        select distinct on (qp.user_id) qp.user_id, qp.level, q.name, qp.completed_at
+        from public.quest_progress qp join public.quests q on q.level = qp.level
+        where not qp.before_start
+        order by qp.user_id, qp.completed_at desc, qp.level desc
+    ), phase_size as (
+        select phase_id, count(*) as n from public.quests group by phase_id
+    ), titles as (
+        select distinct on (x.user_id) x.user_id, x.reward_title
+        from (
+            select qp.user_id, ph.id as phase_id, ph.reward_title
+            from public.quest_progress qp
+            join public.quests q on q.level = qp.level
+            join public.phases ph on ph.id = q.phase_id
+            join phase_size s on s.phase_id = ph.id
+            group by qp.user_id, ph.id, ph.reward_title, s.n
+            having count(*) = s.n
+        ) x
+        order by x.user_id, x.phase_id desc
+    )
+    select p.id,
+           coalesce(nullif(trim(p.player_name), ''), nullif(trim(p.display_name), ''), 'Spieler:in'),
+           p.id = auth.uid(),
+           p.role,
+           coalesce(pr.level, 0),
+           t.reward_title,
+           case when p.show_avatar or p.id = auth.uid() then p.avatar_url end,
+           p.hardcore,
+           p.game_started_at is not null,
+           p.visible,
+           coalesce(pr.quests_7d, 0),
+           l.level, l.name, l.completed_at,
+           coalesce(to_char(p.birthday, 'MM-DD') = to_char(now() at time zone 'Europe/Berlin', 'MM-DD'), false)
+    from public.profiles p
+    left join prog   pr on pr.user_id = p.id
+    left join last   l  on l.user_id  = p.id
+    left join titles t  on t.user_id  = p.id
+    where auth.uid() is not null and (p.visible or p.id = auth.uid())
+    order by coalesce(pr.level, 0) desc, l.completed_at asc nulls last, p.created_at;
+$$;
+
+-- Letzte Quest-Abschlüsse aller sichtbaren Spieler (ohne Starthilfe-Quests)
+drop function if exists public.get_aktivitaet(int);
+create or replace function public.get_aktivitaet(max_rows int default 15)
+returns table (user_id uuid, level int, quest text, completed_at timestamptz)
+language sql stable security definer set search_path = public as $$
+    select qp.user_id, qp.level, q.name, qp.completed_at
+    from public.quest_progress qp
+    join public.quests q on q.level = qp.level
+    join public.profiles p on p.id = qp.user_id
+    where auth.uid() is not null and not qp.before_start and (p.visible or p.id = auth.uid())
+    order by qp.completed_at desc
+    limit least(greatest(coalesce(max_rows, 15), 1), 50);
+$$;
+
+revoke all on function public.get_mitspieler() from public;
+revoke all on function public.get_aktivitaet(int) from public;
+grant execute on function public.get_mitspieler() to authenticated;
+grant execute on function public.get_aktivitaet(int) to authenticated;
+
+-- ───────────────────────── Profilbilder (Storage) ─────────────────────────
+
+-- Privater Bucket, max. 1 MB pro Bild (die Seite verkleinert vorher auf 400×400 px JPEG)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', false, 1048576, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+-- Darf der angemeldete Spieler dieses Bild sehen? (eigenes immer, fremdes nur mit show_avatar + visible)
+create or replace function public.avatar_visible(object_name text)
+returns boolean language sql stable security definer set search_path = public as $$
+    select exists (
+        select 1 from public.profiles p
+        where p.avatar_url = object_name
+          and (p.id = auth.uid() or (p.show_avatar and p.visible))
+    );
+$$;
+revoke all on function public.avatar_visible(text) from public;
+grant execute on function public.avatar_visible(text) to authenticated;
+
+-- Hochladen, ändern, löschen nur im eigenen Ordner <user-id>/
+drop policy if exists "avatar lesen" on storage.objects;
+create policy "avatar lesen" on storage.objects for select to authenticated
+    using (bucket_id = 'avatars' and ((storage.foldername(name))[1] = auth.uid()::text or public.avatar_visible(name)));
+drop policy if exists "avatar hochladen" on storage.objects;
+create policy "avatar hochladen" on storage.objects for insert to authenticated
+    with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "avatar ändern" on storage.objects;
+create policy "avatar ändern" on storage.objects for update to authenticated
+    using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
+    with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "avatar löschen" on storage.objects;
+create policy "avatar löschen" on storage.objects for delete to authenticated
+    using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

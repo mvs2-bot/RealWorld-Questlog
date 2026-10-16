@@ -146,13 +146,14 @@
                         <div><span>E-Mail bestätigt</span><b>${u.email_confirmed_at ? '✅ ' + fmtDateTime(u.email_confirmed_at) : '❌ Nein'}</b></div>
                         <div><span>Spielbeginn</span><b>${u.game_started_at ? fmtDateTime(u.game_started_at) : 'Noch nicht gestartet'}</b></div>
                         <div><span>Grundregeln</span><b>${u.game_started_at ? `Starthilfe ${u.starthilfe ? 'Ja' : 'Nein'} · Hardcore ${u.hardcore ? 'Ja' : 'Nein'}` : '–'}</b></div>
+                        <div><span>Für Mitspieler sichtbar</span><b>${u.visible === false ? '👻 Nein, ausgeblendet' : 'Ja'}</b></div>
                         <div><span>Konto-ID</span><b>${esc(u.id)}</b></div>
                     </div>
                     <form class="edit" data-id="${esc(u.id)}">
                         <div class="grid3">
                             <label>Anzeigename<input type="text" name="display_name" maxlength="40" value="${esc(u.display_name)}"></label>
                             <label>Spielername<input type="text" name="player_name" maxlength="40" value="${esc(u.player_name)}"></label>
-                            <label>Alter<input type="number" name="age" min="1" max="130" value="${u.age ?? ''}"></label>
+                            <label>Geburtsdatum${RQ.ageFrom(u.birthday) !== null ? ` (${RQ.ageFrom(u.birthday)} Jahre)` : u.age ? ` (Alter bisher: ${u.age})` : ''}<input type="date" name="birthday" min="1900-01-01" max="${RQ.today()}" value="${esc(u.birthday || '')}"></label>
                             <label>E-Mail<input type="email" name="email" required value="${esc(u.email)}"></label>
                             <label>Neues Passwort (leer = unverändert)
                                 <span class="pw-row"><input type="text" name="password" minlength="8" autocomplete="new-password">
@@ -178,7 +179,7 @@
         const change = { id: u.id };
         if (val('display_name') !== (u.display_name || '')) change.display_name = val('display_name');
         if (val('player_name') !== (u.player_name || '')) change.player_name = val('player_name');
-        if (val('age') !== String(u.age ?? '')) change.age = val('age');
+        if (val('birthday') !== (u.birthday || '')) change.birthday = val('birthday') || null;
         if (val('email').toLowerCase() !== u.email) change.email = val('email');
         if (f.elements.password.value) change.password = f.elements.password.value;
         if (!f.elements.role.disabled && f.elements.role.value !== u.role) change.role = f.elements.role.value;

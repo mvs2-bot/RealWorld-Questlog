@@ -29,6 +29,7 @@
         </div>
         <div class="header-actions">
             <a id="gmBtn" class="icon-btn" href="gamemaster.html" aria-label="Gamemaster-Bereich" title="Gamemaster-Bereich" hidden>🛡️</a>
+            <a id="meBtn" class="icon-btn me-btn" href="#konto" aria-label="Mein Konto" title="Mein Konto" hidden>👤</a>
             <button id="logoutBtn" class="icon-btn" type="button" aria-label="Abmelden" title="Abmelden" hidden>🚪</button>
             <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
         </div>
@@ -36,6 +37,12 @@
 
     <div id="setupHint" class="banner" hidden>⚙️ Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</div>
     <div id="offlineHint" class="banner" hidden>📴 Offline – du siehst den zuletzt geladenen Spielstand.</div>
+
+    <nav class="tabs" id="mainNav" aria-label="Bereiche" hidden>
+        <a href="#start" data-tab="start">🏠 Start</a>
+        <a href="#questlog" data-tab="questlog">📜 Questlog</a>
+        <a href="#konto" data-tab="konto">👤 Konto</a>
+    </nav>
 
     <!-- Nicht angemeldet -->
     <section id="viewLoggedOut" hidden>
@@ -89,7 +96,7 @@
             <form id="setupForm">
                 <div class="grid2">
                     <label>Spielername<input type="text" id="setupName" maxlength="40" required></label>
-                    <label>Alter<input type="number" id="setupAge" min="1" max="130"></label>
+                    <label>Geburtsdatum<input type="date" id="setupBirthday" min="1900-01-01"><span class="hint" id="setupAge"></span></label>
                 </div>
                 <div class="rule">
                     <p><b>Starthilfe:</b> Quests, die bereits vor Spielbeginn abgeschlossen wurden, dürfen beim Start als abgeschlossen markiert werden.</p>
@@ -106,6 +113,109 @@
                 <button class="btn" type="submit" id="startBtn" style="margin-top:8px">▶️ Spiel starten</button>
             </form>
             <div id="setupMsg" class="msg" hidden></div>
+        </div>
+    </section>
+
+    <!-- Start-Dashboard nach dem Einloggen -->
+    <section id="viewDashboard" hidden>
+        <div id="bdayBanner" class="bday" hidden></div>
+
+        <div class="box">
+            <div class="player">
+                <span class="ava ava-lg" id="dashAva" aria-hidden="true"></span>
+                <div class="player-info">
+                    <div class="hello" id="dashHello"></div>
+                    <div class="dash-sub" id="dashSub"></div>
+                    <div class="xpbar" aria-hidden="true"><div id="dashXp" style="width:0"></div></div>
+                    <div class="chips" id="dashChips"></div>
+                </div>
+            </div>
+            <div class="next" id="dashNext" hidden></div>
+            <div id="dashNextMsg" class="msg" hidden></div>
+        </div>
+
+        <div id="dashMsg" class="msg" hidden style="margin:-8px 0 20px"></div>
+
+        <div class="box">
+            <h2>👥 Mitspieler</h2>
+            <div class="mates" id="mates"></div>
+        </div>
+
+        <div class="box">
+            <h2>🏆 Scoreboard</h2>
+            <p class="note">Wer ist welches Level? Bei Gleichstand liegt vorn, wer das Level zuerst erreicht hat.</p>
+            <div class="board" id="board"></div>
+        </div>
+
+        <div class="grid2">
+            <div class="box">
+                <h2>⚡ Letzte Aktivität</h2>
+                <div class="feed" id="feed"></div>
+            </div>
+            <div class="box">
+                <h2>📊 Die Gruppe</h2>
+                <div class="stats" id="groupStats"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Kontobereich -->
+    <section id="viewAccount" hidden>
+        <div class="box">
+            <h2>👤 Mein Konto</h2>
+            <div class="photo-row">
+                <span class="ava ava-xl" id="accAva" aria-hidden="true"></span>
+                <div class="photo-actions">
+                    <button class="btn-ghost" type="button" id="pickPhoto">📷 Profilbild wählen</button>
+                    <button class="link-btn danger" type="button" id="removePhoto" hidden>Profilbild entfernen</button>
+                    <input type="file" id="photoFile" accept="image/*" hidden>
+                    <p class="note" style="margin:0">Wird quadratisch zugeschnitten und verkleinert.</p>
+                </div>
+            </div>
+            <div id="photoMsg" class="msg" hidden></div>
+            <form id="accForm" style="margin-top:16px">
+                <div class="grid2">
+                    <label>Spielername<input type="text" id="accName" maxlength="40" required></label>
+                    <label>Geburtsdatum<input type="date" id="accBirthday" min="1900-01-01"><span class="hint" id="accAge"></span></label>
+                </div>
+                <label>E-Mail<input type="email" id="accEmail" disabled></label>
+                <button class="btn" type="submit" id="accSave" style="align-self:flex-start">Speichern</button>
+            </form>
+            <div id="accMsg" class="msg" hidden></div>
+        </div>
+
+        <div class="box">
+            <h2>🔒 Privatsphäre</h2>
+            <p class="note">Änderungen gelten sofort.</p>
+            <label class="switch"><input type="checkbox" id="optVisible">
+                <span><b>Für Mitspieler sichtbar</b><small>Du erscheinst bei den anderen im Dashboard, im Scoreboard und in der Aktivität. Ausgeschaltet sieht dich dort niemand, auch kein Gamemaster.</small></span></label>
+            <label class="switch"><input type="checkbox" id="optAvatar">
+                <span><b>Profilbild für Mitspieler sichtbar</b><small>Ausgeschaltet sehen die anderen statt deines Fotos nur deine Initialen.</small></span></label>
+            <div id="privMsg" class="msg" hidden></div>
+        </div>
+
+        <div class="box">
+            <h2>🔑 Passwort ändern</h2>
+            <form id="pwForm" style="max-width:360px">
+                <input type="email" id="pwUser" autocomplete="username" hidden>
+                <label>Neues Passwort<input type="password" id="pw1" autocomplete="new-password" minlength="8" required></label>
+                <label>Neues Passwort wiederholen<input type="password" id="pw2" autocomplete="new-password" minlength="8" required></label>
+                <button class="btn" type="submit" style="align-self:flex-start">Passwort speichern</button>
+            </form>
+            <div id="pwMsg" class="msg" hidden></div>
+        </div>
+
+        <div class="box">
+            <h2>🎮 Meine Grundregeln</h2>
+            <p class="note">Seit Spielbeginn festgelegt.</p>
+            <div class="chips" id="accRules"></div>
+        </div>
+
+        <div class="box">
+            <div class="account">
+                <div class="account-who">Angemeldet als <b id="userEmail"></b></div>
+                <button class="btn-ghost" id="logoutBtn2" type="button">🚪 Abmelden</button>
+            </div>
         </div>
     </section>
 
@@ -144,13 +254,6 @@
             <textarea id="notes" aria-label="Gedanken und Notizen"></textarea>
             <div id="notesMsg" class="msg" hidden></div>
         </div>
-
-        <div class="box">
-            <div class="account">
-                <div class="account-who">Angemeldet als <b id="userEmail"></b></div>
-                <button class="btn-ghost" id="logoutBtn2" type="button">🚪 Abmelden</button>
-            </div>
-        </div>
     </section>
 </div>
 
@@ -159,8 +262,34 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const show = (el, on = true) => { el.hidden = !on; };
     function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
-    const VIEWS = ['#viewLoggedOut', '#viewRecovery', '#viewSetup', '#viewGame'];
-    const only = id => VIEWS.forEach(v => show($(v), v === id));
+    const VIEWS = ['#viewLoggedOut', '#viewRecovery', '#viewSetup', '#viewDashboard', '#viewGame', '#viewAccount'];
+    const TABS = { start: '#viewDashboard', questlog: '#viewGame', konto: '#viewAccount' };
+    const only = id => {
+        VIEWS.forEach(v => show($(v), v === id));
+        const tab = Object.keys(TABS).find(t => TABS[t] === id);
+        show($('#mainNav'), !!tab);
+        document.querySelectorAll('#mainNav a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
+    };
+    const ageText = b => { const a = RQ.ageFrom(b); return a === null ? '' : `🎂 ${a} Jahre alt`; };
+    function badBirthday(b) { return b && (b < '1900-01-01' || b > RQ.today()) ? 'Bitte ein gültiges Geburtsdatum eintragen.' : ''; }
+
+    /* Profilbild oder Initialen im Kreis */
+    const COLORS = ['#7c3aed', '#db2777', '#ea580c', '#0891b2', '#16a34a', '#4f46e5', '#ca8a04', '#dc2626'];
+    function initials(name) { return String(name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'; }
+    function avaHtml(name, url) {
+        if (url) return `<img src="${esc(url)}" alt="">`;
+        let h = 0; for (const c of String(name || '')) h = (h * 31 + c.codePointAt(0)) >>> 0;
+        return `<span class="ini" style="background:${COLORS[h % COLORS.length]}">${esc(initials(name))}</span>`;
+    }
+    function ago(iso) {
+        if (!iso) return '';
+        const sec = (Date.now() - new Date(iso)) / 1000, rtf = new Intl.RelativeTimeFormat('de', { numeric: 'auto' });
+        if (sec < 60) return 'gerade eben';
+        if (sec < 3600) return rtf.format(-Math.round(sec / 60), 'minute');
+        if (sec < 86400) return rtf.format(-Math.round(sec / 3600), 'hour');
+        if (sec < 86400 * 7) return rtf.format(-Math.round(sec / 86400), 'day');
+        return 'am ' + fmtDate(iso);
+    }
     const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('de-DE') : '';
     const fmtNum = n => Number(n || 0).toLocaleString('de-DE');
 
@@ -177,7 +306,7 @@
 
     /* ───────── Nicht angemeldet ───────── */
     async function renderLoggedOut() {
-        only('#viewLoggedOut'); show($('#logoutBtn'), false); show($('#gmBtn'), false);
+        only('#viewLoggedOut'); show($('#logoutBtn'), false); show($('#gmBtn'), false); show($('#meBtn'), false);
         const s = await RQ.publicStats();
         $('#publicStats').innerHTML = [
             ['🎮', s ? fmtNum(s.players) : '–', 'Spieler'],
@@ -217,11 +346,14 @@
         only('#viewSetup'); show($('#logoutBtn')); showGm();
         const p = game.profile || {};
         $('#setupName').value = p.player_name || p.display_name || '';
-        if (p.age) $('#setupAge').value = p.age;
+        $('#setupBirthday').max = RQ.today();
+        if (p.birthday) $('#setupBirthday').value = p.birthday;
+        $('#setupAge').textContent = ageText($('#setupBirthday').value);
         $('#pickList').innerHTML = game.phases.map(ph => `<h3>${esc(ph.title)} · ${esc(ph.subtitle)}</h3>` +
             game.quests.filter(q => q.phase_id === ph.id && q.level < 100).map(q =>
                 `<label><input type="checkbox" value="${q.level}"> ${q.level}. ${esc(q.name)}</label>`).join('')).join('');
     }
+    $('#setupBirthday').oninput = () => { $('#setupAge').textContent = ageText($('#setupBirthday').value); };
     document.querySelectorAll('input[name="starthilfe"]').forEach(r => r.onchange = () => show($('#pickWrap'), radio('starthilfe')));
     $('#setupForm').onsubmit = async e => {
         e.preventDefault();
@@ -229,9 +361,12 @@
         const alreadyDone = starthilfe ? [...$('#pickList').querySelectorAll('input:checked')].map(i => +i.value) : [];
         const rules = `Starthilfe: ${starthilfe ? 'Ja' : 'Nein'}, Hardcore Mode: ${hardcore ? 'Ja' : 'Nein'}` + (alreadyDone.length ? `, ${alreadyDone.length} Quests schon erledigt` : '');
         if (!confirm(`Spiel jetzt starten?\n\n${rules}\n\nDie Grundregeln sind danach fest.`)) return;
+        const birthday = $('#setupBirthday').value || null;
+        if (badBirthday(birthday)) return msg($('#setupMsg'), badBirthday(birthday));
         const btn = $('#startBtn'); btn.disabled = true; msg($('#setupMsg'), '');
         try {
-            await RQ.startGame({ player_name: $('#setupName').value.trim(), age: +$('#setupAge').value || null, starthilfe, hardcore, alreadyDone });
+            await RQ.startGame({ player_name: $('#setupName').value.trim(), birthday, starthilfe, hardcore, alreadyDone });
+            location.hash = '#start';
             await route();
         } catch (err) { msg($('#setupMsg'), RQ.errorText(err)); }
         finally { btn.disabled = false; }
@@ -251,7 +386,6 @@
     function renderGame(offline) {
         only('#viewGame'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!offline);
         const p = game.profile, n = doneCount();
-        $('#userEmail').textContent = p.display_name || game.email;
         $('#lvlNum').textContent = n;
         $('#playerName').textContent = p.player_name || p.display_name || 'Spieler';
         $('#xpFill').style.width = n + '%';
@@ -313,6 +447,7 @@
                 game.progress[level] = await RQ.completeQuest(level);
             }
             RQ.cacheSet('game_' + game.profile.id, game);
+            dash = null;
             renderGame(false);
         } catch (err) { btn.disabled = false; msg($('#gameMsg'), RQ.errorText(err)); $('#gameMsg').scrollIntoView({ block: 'nearest' }); }
     };
@@ -321,7 +456,211 @@
         catch (err) { msg($('#notesMsg'), RQ.errorText(err)); }
     };
 
-    async function logout() { await RQ.signOut(); game = null; route(); }
+
+    /* ───────── Eigenes Profilbild (Header, Dashboard, Konto) ───────── */
+    let myAvatar = null;   /* signierter Link zum eigenen Bild oder null */
+    const myName = () => (game && game.profile && (game.profile.player_name || game.profile.display_name)) || (game && game.email) || 'Spieler:in';
+    async function loadMyAvatar() {
+        const path = game && game.profile && game.profile.avatar_url;
+        myAvatar = path ? (await RQ.avatarUrls([path]))[path] || null : null;
+        paintMyAvatar();
+    }
+    function paintMyAvatar() {
+        const b = $('#meBtn');
+        b.classList.toggle('has-photo', !!myAvatar);
+        b.innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : '👤';
+        ['#dashAva', '#accAva'].forEach(s => { $(s).innerHTML = avaHtml(myName(), myAvatar); });
+    }
+
+    /* ───────── Start-Dashboard ───────── */
+    let dash = null;   /* { players, activity, offline } */
+    const lockedTitle = () => game.phases.find(ph => !phaseDone(ph));
+    function currentTitle() {
+        const done = game.phases.filter(phaseDone);
+        return done.length ? done[done.length - 1].reward_title : '';
+    }
+
+    function renderHero() {
+        const p = game.profile, n = doneCount(), me = dash && dash.players.find(x => x.is_me);
+        $('#dashHello').textContent = `Hallo, ${myName()}! 👋`;
+        const t = currentTitle(), nextPh = lockedTitle();
+        const left = nextPh ? game.quests.filter(q => q.phase_id === nextPh.id && !isDone(q.level)).length : 0;
+        $('#dashSub').innerHTML = `<b>Level ${n}</b>${t ? ` · 🏅 ${esc(t)}` : ''}` +
+            (nextPh ? `<br><span class="mute">Noch ${left} ${left === 1 ? 'Quest' : 'Quests'} bis zum Titel „${esc(nextPh.reward_title)}“</span>` : '');
+        $('#dashXp').style.width = n + '%';
+        const rank = me && dash.players.filter(x => x.level > me.level).length + 1;
+        $('#dashChips').innerHTML = [
+            `<span class="chip xp">⭐ ${fmtNum(n * 100)} G</span>`,
+            rank && dash.players.length > 1 ? `<span class="chip">🏆 Platz ${rank} von ${dash.players.length}</span>` : '',
+            me && me.quests_7d ? `<span class="chip">🔥 ${me.quests_7d} diese Woche</span>` : '',
+            p.hardcore ? '<span class="chip hard">💀 Hardcore Mode</span>' : '',
+            p.visible === false ? '<a class="chip" href="#konto">👻 Für Mitspieler ausgeblendet</a>' : ''
+        ].join('');
+        const next = game.quests.find(q => !isDone(q.level) && !lockReason(q.level));
+        show($('#dashNext'), !!next);
+        if (next) $('#dashNext').innerHTML = `<div>🎯 <b>Nächste Quest: Level ${next.level} · ${esc(next.name)}</b><br>${esc(next.description)}</div>
+            <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.level}">✅ Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog →</a></div>`;
+        if (isDone(100)) { show($('#dashNext')); $('#dashNext').innerHTML = '🏆 <b>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</b><br>Alle 100 Quests abgeschlossen. New Game Plus kann starten.'; }
+    }
+
+    async function renderDashboard() {
+        only('#viewDashboard'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!game.offline);
+        msg($('#dashMsg'), '');
+        renderHero();
+        if (!dash) {
+            ['#mates', '#board', '#feed'].forEach(s => { $(s).innerHTML = '<p class="note" style="margin:0">⏳ Wird geladen …</p>'; });
+            try { dash = await RQ.loadDashboard(); }
+            catch (err) {
+                ['#mates', '#board', '#feed'].forEach(s => { $(s).innerHTML = ''; });
+                $('#groupStats').innerHTML = '';
+                return msg($('#dashMsg'), RQ.errorText(err));
+            }
+            if ($('#viewDashboard').hidden) return;   /* inzwischen weitergeklickt */
+        }
+        show($('#offlineHint'), !!(game.offline || dash.offline));
+        const urls = await RQ.avatarUrls(dash.players.map(x => x.avatar_url));
+        const pic = x => x.is_me ? myAvatar : urls[x.avatar_url];
+        renderHero();
+
+        /* Geburtstage */
+        const bdays = dash.players.filter(x => x.birthday_today);
+        show($('#bdayBanner'), !!bdays.length);
+        $('#bdayBanner').innerHTML = bdays.map(x => x.is_me ? `🎂 Alles Gute zum Geburtstag, <b>${esc(x.name)}</b>! 🎉` : `🎂 <b>${esc(x.name)}</b> hat heute Geburtstag!`).join('<br>');
+
+        /* Mitspieler (minimalistisch) */
+        const mates = dash.players.filter(x => !x.is_me);
+        $('#mates').innerHTML = mates.length ? mates.map(x => `<div class="mate" title="${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}">
+                <span class="ava">${avaHtml(x.name, pic(x))}</span><b>${esc(x.name)}</b><small>${x.started ? 'Level ' + x.level : 'noch nicht gestartet'}</small></div>`).join('')
+            : '<p class="note" style="margin:0">Noch keine Mitspieler zu sehen.</p>';
+
+        /* Scoreboard */
+        const medal = r => ['🥇', '🥈', '🥉'][r - 1] || r + '.';
+        $('#board').innerHTML = dash.players.map(x => {
+            const r = dash.players.filter(y => y.level > x.level).length + 1;
+            const last = x.last_level ? `Lv ${x.last_level} · ${esc(x.last_quest)} <span class="mute">· ${esc(ago(x.last_completed_at))}</span>` : '<span class="mute">Noch keine Quest abgeschlossen</span>';
+            return `<div class="row${x.is_me ? ' me' : ''}">
+                <div class="rank">${medal(r)}</div>
+                <span class="ava">${avaHtml(x.name, pic(x))}</span>
+                <div class="who">
+                    <div class="who-name">${esc(x.name)}${x.is_me ? ' <span class="chip">Du</span>' : ''}${x.role === 'gamemaster' ? ' <span title="Gamemaster">🛡️</span>' : ''}${x.hardcore ? ' <span title="Hardcore Mode">💀</span>' : ''}${x.birthday_today ? ' 🎂' : ''}${x.is_me && x.visible === false ? ' <span class="chip">👻 nur für dich sichtbar</span>' : ''}</div>
+                    <div class="who-title">${x.title ? '🏅 ' + esc(x.title) : `<span class="mute">${x.started ? 'Noch kein Titel' : 'Noch nicht gestartet'}</span>`}</div>
+                    <div class="who-last">✅ Zuletzt: ${last}</div>
+                </div>
+                <div class="lv"><b>${x.level}</b><span>Level</span><div class="mini"><div style="width:${x.level}%"></div></div></div>
+            </div>`;
+        }).join('');
+
+        /* Aktivität */
+        const byId = Object.fromEntries(dash.players.map(x => [x.id, x]));
+        $('#feed').innerHTML = dash.activity.length ? dash.activity.map(a => {
+            const x = byId[a.user_id] || { name: 'Spieler:in' };
+            return `<div class="feed-item"><span class="ava ava-sm">${avaHtml(x.name, pic(x))}</span>
+                <div><b>${x.is_me ? 'Du' : esc(x.name)}</b> ${x.is_me ? 'hast' : 'hat'} <b>Level ${a.level} · ${esc(a.quest)}</b> abgeschlossen<br><small>${esc(ago(a.completed_at))}</small></div></div>`;
+        }).join('') : '<p class="note" style="margin:0">Noch keine Quests abgeschlossen. Wer macht den Anfang?</p>';
+
+        /* Gruppe */
+        const sum = k => dash.players.reduce((t, x) => t + (x[k] || 0), 0);
+        const champ = dash.players.filter(x => x.quests_7d > 0).sort((a, b) => b.quests_7d - a.quests_7d)[0];
+        const top = dash.players[0];
+        $('#groupStats').innerHTML = [
+            ['👥', fmtNum(dash.players.length), 'Spieler'],
+            ['✅', fmtNum(sum('level')), 'Quests erledigt'],
+            ['🔥', fmtNum(sum('quests_7d')), 'diese Woche'],
+            ['👑', top && top.level ? esc(top.name) : '–', 'Höchstes Level'],
+            ['⚡', champ ? esc(champ.name) : '–', 'Wochen-Champion']
+        ].map(([i, n, t]) => `<div class="stat"><b>${i} ${n}</b><span>${t}</span></div>`).join('');
+    }
+
+    $('#dashNext').onclick = async e => {
+        const b = e.target.closest('#dashDone'); if (!b) return;
+        const level = +b.dataset.level; b.disabled = true; msg($('#dashNextMsg'), '');
+        try {
+            game.progress[level] = await RQ.completeQuest(level);
+            RQ.cacheSet('game_' + game.profile.id, game);
+            dash = null;
+            await renderDashboard();
+            msg($('#dashNextMsg'), `🎉 Level ${doneCount()} erreicht!`, true);
+        } catch (err) { b.disabled = false; msg($('#dashNextMsg'), RQ.errorText(err)); }
+    };
+
+    /* ───────── Kontobereich ───────── */
+    function renderAccount() {
+        only('#viewAccount'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!game.offline);
+        const p = game.profile;
+        paintMyAvatar();
+        show($('#removePhoto'), !!p.avatar_url);
+        $('#accName').value = p.player_name || p.display_name || '';
+        $('#accBirthday').max = RQ.today();
+        $('#accBirthday').value = p.birthday || '';
+        $('#accAge').textContent = ageText(p.birthday) || (p.age ? `Bisher eingetragen: ${p.age} Jahre` : '');
+        $('#accEmail').value = $('#pwUser').value = game.email || '';
+        $('#userEmail').textContent = game.email || '';
+        $('#optVisible').checked = p.visible !== false;
+        $('#optAvatar').checked = p.show_avatar !== false;
+        $('#accRules').innerHTML = [
+            p.game_started_at ? `<span class="chip">🗓️ Spielbeginn ${fmtDate(p.game_started_at)}</span>` : '',
+            `<span class="chip">🤝 Starthilfe: ${p.starthilfe ? 'Ja' : 'Nein'}</span>`,
+            `<span class="chip${p.hardcore ? ' hard' : ''}">💀 Hardcore Mode: ${p.hardcore ? 'Ja' : 'Nein'}</span>`,
+            `<span class="chip">${p.role === 'gamemaster' ? '🛡️ Gamemaster' : '🎮 Spieler:in'}</span>`
+        ].join('');
+    }
+    function updated(profile) { Object.assign(game.profile, profile); RQ.cacheSet('game_' + game.profile.id, game); dash = null; }
+
+    $('#accBirthday').oninput = () => { $('#accAge').textContent = ageText($('#accBirthday').value); };
+    $('#accForm').onsubmit = async e => {
+        e.preventDefault();
+        const birthday = $('#accBirthday').value || null;
+        if (badBirthday(birthday)) return msg($('#accMsg'), badBirthday(birthday));
+        const btn = $('#accSave'); btn.disabled = true; msg($('#accMsg'), '');
+        try { updated(await RQ.saveProfile({ player_name: $('#accName').value.trim(), birthday })); paintMyAvatar(); msg($('#accMsg'), '✅ Gespeichert.', true); }
+        catch (err) { msg($('#accMsg'), RQ.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
+
+    $('#pickPhoto').onclick = () => $('#photoFile').click();
+    $('#photoFile').onchange = async () => {
+        const f = $('#photoFile').files[0]; $('#photoFile').value = '';
+        if (!f) return;
+        $('#pickPhoto').disabled = true; msg($('#photoMsg'), '⏳ Profilbild wird hochgeladen …', true);
+        try { updated(await RQ.uploadAvatar(f, game.profile.avatar_url)); await loadMyAvatar(); show($('#removePhoto')); msg($('#photoMsg'), '✅ Profilbild gespeichert.', true); }
+        catch (err) { msg($('#photoMsg'), RQ.errorText(err)); }
+        finally { $('#pickPhoto').disabled = false; }
+    };
+    $('#removePhoto').onclick = async () => {
+        if (!confirm('Profilbild wirklich entfernen?')) return;
+        try { updated(await RQ.removeAvatar(game.profile.avatar_url)); await loadMyAvatar(); show($('#removePhoto'), false); msg($('#photoMsg'), '✅ Profilbild entfernt.', true); }
+        catch (err) { msg($('#photoMsg'), RQ.errorText(err)); }
+    };
+
+    async function savePrivacy(field, box) {
+        msg($('#privMsg'), '');
+        try { updated(await RQ.saveProfile({ [field]: box.checked })); msg($('#privMsg'), '✅ Gespeichert.', true); setTimeout(() => msg($('#privMsg'), ''), 2000); }
+        catch (err) { box.checked = !box.checked; msg($('#privMsg'), RQ.errorText(err)); }
+    }
+    $('#optVisible').onchange = () => savePrivacy('visible', $('#optVisible'));
+    $('#optAvatar').onchange = () => savePrivacy('show_avatar', $('#optAvatar'));
+
+    $('#pwForm').onsubmit = async e => {
+        e.preventDefault();
+        if ($('#pw1').value !== $('#pw2').value) return msg($('#pwMsg'), 'Die beiden Passwörter sind nicht gleich.');
+        try { await RQ.updatePassword($('#pw1').value); $('#pwForm').reset(); $('#pwUser').value = game.email || ''; msg($('#pwMsg'), '✅ Passwort geändert.', true); }
+        catch (err) { msg($('#pwMsg'), RQ.errorText(err)); }
+    };
+
+    /* ───────── Bereiche (Start / Questlog / Konto) ───────── */
+    function showTab() {
+        const tab = location.hash.replace('#', '');
+        if (tab === 'questlog') return renderGame(game.offline);
+        if (tab === 'konto') return renderAccount();
+        return renderDashboard();
+    }
+    window.addEventListener('hashchange', () => {
+        if (recovering || !game || !game.profile || !game.profile.game_started_at) return;
+        if (!/^#(questlog|konto)$/.test(location.hash)) dash = null;   /* Dashboard immer frisch laden */
+        showTab(); window.scrollTo(0, 0);
+    });
+
+    async function logout() { await RQ.signOut(); game = null; dash = null; myAvatar = null; history.replaceState(null, '', location.pathname); route(); }
     $('#logoutBtn').onclick = logout; $('#logoutBtn2').onclick = logout;
 
     /* ───────── Routing ───────── */
@@ -334,7 +673,8 @@
         try { game = await RQ.loadGame(); }
         catch (e) { only('#viewGame'); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
         if (!game.quests.length) { only('#viewGame'); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
-        return game.profile && game.profile.game_started_at ? renderGame(game.offline) : renderSetup();
+        show($('#meBtn'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar();
+        return game.profile && game.profile.game_started_at ? showTab() : renderSetup();
     }
 
     route();
