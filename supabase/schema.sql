@@ -62,6 +62,14 @@ alter table public.quests         enable row level security;
 alter table public.profiles       enable row level security;
 alter table public.quest_progress enable row level security;
 
+-- Tabellenrechte für die Website-Schnittstelle (Data API). Neuere Supabase-Projekte vergeben
+-- diese nicht mehr automatisch; ohne sie meldet die Seite "permission denied for table …".
+-- Welche Zeilen jemand sieht, regeln danach die Policies darunter.
+revoke all on public.phases, public.quests, public.profiles, public.quest_progress from anon;
+grant select on public.phases, public.quests to authenticated;
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert, update, delete on public.quest_progress to authenticated;
+
 -- Phasen & Quests: nur für angemeldete Spieler lesbar, ändern nur über den SQL Editor
 drop policy if exists "phases lesen" on public.phases;
 create policy "phases lesen" on public.phases for select to authenticated using (true);
