@@ -115,9 +115,20 @@
         if (error) throw error;
     }
 
+    /* Abmelden nur auf diesem Gerät (andere Geräte bleiben angemeldet).
+       Wurde die Sitzung schon anderswo beendet, lehnt der Server das Abmelden ab
+       und supabase-js behält die alte Sitzung – dann räumen wir sie selbst weg. */
     async function signOut() {
         clearCache();
-        if (sb) { try { await sb.auth.signOut(); } catch (e) {} }
+        if (!sb) return;
+        try {
+            const { error } = await sb.auth.signOut({ scope: 'local' });
+            if (!error) return;
+        } catch (e) {}
+        try {
+            const key = sb.auth.storageKey;
+            Object.keys(localStorage).filter(k => k === key || k.startsWith(key + '-')).forEach(k => localStorage.removeItem(k));
+        } catch (e) {}
     }
 
     async function resetPassword(email) {

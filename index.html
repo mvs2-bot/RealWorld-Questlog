@@ -755,7 +755,7 @@
         showTab(); window.scrollTo(0, 0);
     });
 
-    async function logout() { await RQ.signOut(); game = null; dash = null; myAvatar = null; history.replaceState(null, '', location.pathname); route(); }
+    async function logout() { await RQ.signOut(); location.replace(location.pathname); }
     $('#logoutBtn').onclick = logout; $('#logoutBtn2').onclick = logout;
 
     /* ───────── Routing ───────── */
