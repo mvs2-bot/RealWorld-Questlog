@@ -47,11 +47,15 @@ Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und 
 - **Start**: eigenes Level mit Titel-Fortschritt und nächster Quest (direkt abhakbar), die Mitspieler,
   ein Scoreboard (Level, Titel, zuletzt abgeschlossene Quest), die letzten Quest-Abschlüsse der Gruppe,
   Gruppen-Zahlen (Quests gesamt, diese Woche, Wochen-Champion) und ein Hinweis, wenn jemand Geburtstag hat.
+- **Questlog**: alle 100 Quests mit Emoji wie im Buch. Bei abgeschlossenen Quests lassen sich das
+  Abschlussdatum (nicht in der Zukunft, nicht vor Spielbeginn) und ein Kommentar nachträglich ändern.
 - **Konto**: Profilbild hochladen (wird wie bei TravelBase quadratisch auf 400 px verkleinert), Spielername,
-  Geburtsdatum (das Alter rechnet die Seite selbst aus), Passwort ändern und zwei Schalter:
+  Geburtsdatum (das Alter rechnet die Seite selbst aus), Passwort ändern und drei Schalter:
   - *Für Mitspieler sichtbar*: aus = man fehlt bei allen anderen in Dashboard, Scoreboard und Aktivität,
     auch bei Gamemastern. Die Kontenverwaltung auf `gamemaster.html` listet weiterhin alle Konten.
   - *Profilbild für Mitspieler sichtbar*: aus = die anderen sehen nur die Initialen.
+  - *Questlog für Mitspieler freigeben*: an = Mitspieler können einen auf der Startseite anklicken und das
+    Questlog ansehen (nur lesen, ohne die privaten Notizen).
 - Die Daten der anderen liefern die Datenbank-Funktionen `get_mitspieler` und `get_aktivitaet`; Geburtsdatum,
   E-Mail und Notizen anderer Spieler verlassen die Datenbank nicht. Profilbilder liegen im privaten
   Storage-Bucket `avatars`, wer welches Bild sehen darf, prüft Supabase selbst.
@@ -63,6 +67,9 @@ Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und 
   Edge Function, die jede Anfrage selbst gegen die Rolle in der Datenbank prüft.
 - Die Rolle kann sich niemand selbst geben; das verhindert ein Trigger in der Datenbank.
 - Passwörter speichert Supabase nur als Hash. Der Gamemaster kann sie nicht sehen, aber neu setzen.
+- Gamemaster können jedes Questlog öffnen (über die Startseite oder „📜 Questlog öffnen“ im Gamemaster-Bereich),
+  auch nicht freigegebene und ausgeblendete, und dort Quests abschließen, wieder öffnen sowie Datum und Kommentar
+  ändern. Die Spielregeln gelten auch für sie. Die privaten Notizen sehen auch Gamemaster nicht.
 
 ## Spielregeln in der Datenbank
 

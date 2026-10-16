@@ -56,7 +56,7 @@ async function listAccounts() {
         users.push(...batch);
         if (batch.length < 1000) break;
     }
-    const profiles = check(await admin.from('profiles').select('id, role, display_name, player_name, age, birthday, visible, starthilfe, hardcore, game_started_at')) ?? [];
+    const profiles = check(await admin.from('profiles').select('id, role, display_name, player_name, age, birthday, visible, share_questlog, starthilfe, hardcore, game_started_at')) ?? [];
     const progress = check(await admin.from('quest_progress').select('user_id')) ?? [];
     // deno-lint-ignore no-explicit-any
     const byId = new Map<string, any>(profiles.map((p: any) => [p.id, p]));
@@ -76,6 +76,7 @@ async function listAccounts() {
             age: p.age ?? null,
             birthday: p.birthday ?? null,
             visible: p.visible ?? true,
+            share_questlog: !!p.share_questlog,
             starthilfe: !!p.starthilfe,
             hardcore: !!p.hardcore,
             game_started_at: p.game_started_at ?? null,

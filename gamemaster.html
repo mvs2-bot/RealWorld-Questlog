@@ -147,6 +147,7 @@
                         <div><span>Spielbeginn</span><b>${u.game_started_at ? fmtDateTime(u.game_started_at) : 'Noch nicht gestartet'}</b></div>
                         <div><span>Grundregeln</span><b>${u.game_started_at ? `Starthilfe ${u.starthilfe ? 'Ja' : 'Nein'} · Hardcore ${u.hardcore ? 'Ja' : 'Nein'}` : '–'}</b></div>
                         <div><span>Für Mitspieler sichtbar</span><b>${u.visible === false ? '👻 Nein, ausgeblendet' : 'Ja'}</b></div>
+                        <div><span>Questlog freigegeben</span><b>${u.share_questlog ? '📜 Ja' : 'Nein'}</b></div>
                         <div><span>Konto-ID</span><b>${esc(u.id)}</b></div>
                     </div>
                     <form class="edit" data-id="${esc(u.id)}">
@@ -163,6 +164,7 @@
                         </div>
                         <div class="form-actions">
                             <button class="btn" type="submit">Speichern</button>
+                            <a class="btn-ghost" href="./#questlog/${esc(u.id)}" title="Quests abschließen, wieder öffnen, Datum und Kommentar ändern">📜 Questlog öffnen</a>
                             ${self ? '' : '<button class="btn-danger" type="button" data-del>🗑️ Konto löschen</button>'}
                         </div>
                         <div class="msg" hidden></div>

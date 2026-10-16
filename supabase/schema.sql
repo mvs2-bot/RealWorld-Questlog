@@ -4,10 +4,10 @@
 --
 -- Tabellen
 --   phases          6 Phasen (Noob Phase … The final Step) inkl. Belohnungs-Titel
---   quests          100 Quests, eine pro Level
+--   quests          100 Quests, eine pro Level (mit Emoji wie im PDF)
 --   profiles        ein Spieler pro Benutzerkonto (Rolle, Spielername, Geburtsdatum, Profilbild,
---                   Sichtbarkeit, Grundregeln, Notizen)
---   quest_progress  welche Quests ein Spieler wann abgeschlossen hat
+--                   Sichtbarkeit, Questlog-Freigabe, Grundregeln, Notizen)
+--   quest_progress  welche Quests ein Spieler wann abgeschlossen hat, mit Kommentar
 --   Storage-Bucket "avatars"  Profilbilder (privat), je Spieler im Ordner <user-id>/
 --
 -- Spielregeln, die die Datenbank selbst durchsetzt
@@ -15,6 +15,13 @@
 --   - Starthilfe: nur vor Spielbeginn dürfen Quests als "schon erledigt" markiert werden.
 --   - Hardcore Mode: Quest n erst, wenn 1 … n-1 abgeschlossen sind.
 --   - Level 100 erst, wenn alle Level 1 … 99 abgeschlossen sind (gilt immer).
+--   - Abschlussdatum: nicht in der Zukunft und nicht vor dem Spielbeginn.
+--
+-- Wer welches Questlog sehen und ändern darf
+--   - Das eigene: immer sehen und bearbeiten.
+--   - Fremde: nur ansehen, wenn der Besitzer es im Kontobereich freigegeben hat und sichtbar ist.
+--   - Gamemaster: sehen und bearbeiten jedes Questlog (abschließen, öffnen, Datum, Kommentar),
+--     unabhängig von Freigabe und Sichtbarkeit. Die Spielregeln oben gelten auch für sie.
 --
 -- Rollen
 --   gamemaster  verwaltet die Konten (Seite gamemaster.html + Edge Function "gamemaster")
@@ -40,6 +47,9 @@ create table if not exists public.quests (
     name         text not null,
     description  text not null
 );
+
+-- Emoji vor dem Quest-Namen (kommt wie die Texte aus dem Seed-Skript)
+alter table public.quests add column if not exists emoji text;
 
 create table if not exists public.profiles (
     id               uuid primary key references auth.users(id) on delete cascade,
@@ -67,6 +77,8 @@ alter table public.profiles add column if not exists birthday    date;
 alter table public.profiles add column if not exists avatar_url  text;
 alter table public.profiles add column if not exists show_avatar boolean not null default true;
 alter table public.profiles add column if not exists visible     boolean not null default true;
+-- share_questlog  Mitspieler dürfen das Questlog ansehen (nur lesen); Gamemaster sehen es immer
+alter table public.profiles add column if not exists share_questlog boolean not null default false;
 alter table public.profiles drop constraint if exists profiles_birthday_check;
 alter table public.profiles add constraint profiles_birthday_check check (birthday is null or birthday >= date '1900-01-01');
 alter table public.profiles drop constraint if exists profiles_avatar_check;
@@ -77,9 +89,11 @@ create table if not exists public.quest_progress (
     level         int  not null references public.quests(level),
     completed_at  timestamptz not null default now(),
     before_start  boolean not null default false,  -- per Starthilfe vor Spielbeginn markiert
-    note          text,
+    note          text,                            -- Kommentar zur abgeschlossenen Quest
     primary key (user_id, level)
 );
+alter table public.quest_progress drop constraint if exists quest_progress_note_check;
+alter table public.quest_progress add constraint quest_progress_note_check check (note is null or char_length(note) <= 1000);
 
 -- ───────────────────────── Zugriffsregeln (RLS) ─────────────────────────
 
@@ -112,15 +126,37 @@ create policy "profil anlegen" on public.profiles for insert to authenticated wi
 drop policy if exists "profil ändern" on public.profiles;
 create policy "profil ändern" on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
--- Fortschritt: jeder nur seinen eigenen
+-- Ist der angemeldete Benutzer Gamemaster? (security definer, damit die Policies nicht im Kreis laufen)
+create or replace function public.is_gamemaster()
+returns boolean language sql stable security definer set search_path = public as $$
+    select exists (select 1 from public.profiles where id = auth.uid() and role = 'gamemaster');
+$$;
+revoke all on function public.is_gamemaster() from public;
+grant execute on function public.is_gamemaster() to authenticated;
+
+-- Darf der angemeldete Benutzer das Questlog dieses Spielers ansehen?
+-- Eigenes immer, Gamemaster immer, sonst nur freigegeben und sichtbar.
+create or replace function public.can_view_questlog(owner uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+    select auth.uid() is not null and (
+        owner = auth.uid()
+        or public.is_gamemaster()
+        or exists (select 1 from public.profiles p where p.id = owner and p.share_questlog and p.visible)
+    );
+$$;
+revoke all on function public.can_view_questlog(uuid) from public;
+grant execute on function public.can_view_questlog(uuid) to authenticated;
+
+-- Fortschritt: ansehen laut can_view_questlog, ändern nur der Besitzer und Gamemaster
 drop policy if exists "fortschritt lesen" on public.quest_progress;
-create policy "fortschritt lesen" on public.quest_progress for select to authenticated using (user_id = auth.uid());
+create policy "fortschritt lesen" on public.quest_progress for select to authenticated using (public.can_view_questlog(user_id));
 drop policy if exists "fortschritt eintragen" on public.quest_progress;
-create policy "fortschritt eintragen" on public.quest_progress for insert to authenticated with check (user_id = auth.uid());
+create policy "fortschritt eintragen" on public.quest_progress for insert to authenticated with check (user_id = auth.uid() or public.is_gamemaster());
 drop policy if exists "fortschritt ändern" on public.quest_progress;
-create policy "fortschritt ändern" on public.quest_progress for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "fortschritt ändern" on public.quest_progress for update to authenticated
+    using (user_id = auth.uid() or public.is_gamemaster()) with check (user_id = auth.uid() or public.is_gamemaster());
 drop policy if exists "fortschritt löschen" on public.quest_progress;
-create policy "fortschritt löschen" on public.quest_progress for delete to authenticated using (user_id = auth.uid());
+create policy "fortschritt löschen" on public.quest_progress for delete to authenticated using (user_id = auth.uid() or public.is_gamemaster());
 
 -- ───────────────────────── Automatik ─────────────────────────
 
@@ -174,24 +210,42 @@ drop trigger if exists profiles_lock_rules on public.profiles;
 create trigger profiles_lock_rules before update on public.profiles
     for each row execute function public.lock_rules_after_start();
 
--- Quest-Abschluss prüfen (Starthilfe, Hardcore Mode, Level 100)
+-- Quest-Abschluss prüfen (Starthilfe, Hardcore Mode, Level 100, Abschlussdatum).
+-- security definer, damit die Prüfung auch dann das Profil und alle Quests des Spielers sieht,
+-- wenn ein Gamemaster für jemand anderen abschließt. Wer überhaupt schreiben darf, regeln die Policies.
 create or replace function public.check_quest_progress()
-returns trigger language plpgsql set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public as $$
 declare
     p public.profiles;
     done_before int;
 begin
-    -- Nachträglich ändern darf man nur die Notiz
-    if tg_op = 'UPDATE' then
-        if new.level <> old.level or new.before_start <> old.before_start or new.user_id <> old.user_id then
-            raise exception 'Nur die Notiz einer Quest kann geändert werden.' using errcode = 'P0001';
-        end if;
-        return new;
-    end if;
-
     select * into p from public.profiles where id = new.user_id;
     if p.id is null then
         raise exception 'Kein Spielerprofil gefunden.' using errcode = 'P0001';
+    end if;
+
+    -- Abschlussdatum: nicht in der Zukunft, nicht vor dem Spielbeginn (per Starthilfe erledigte Quests
+    -- behalten ihr Datum). Verglichen wird der Kalendertag in deutscher Zeit.
+    if not new.before_start and (tg_op = 'INSERT' or new.completed_at is distinct from old.completed_at) then
+        if new.completed_at > now() + interval '5 minutes' then
+            raise exception 'Das Abschlussdatum darf nicht in der Zukunft liegen.' using errcode = 'P0001';
+        end if;
+        if p.game_started_at is not null and
+           (new.completed_at at time zone 'Europe/Berlin')::date < (p.game_started_at at time zone 'Europe/Berlin')::date then
+            raise exception 'Das Abschlussdatum darf nicht vor dem Spielbeginn (%) liegen.',
+                to_char(p.game_started_at at time zone 'Europe/Berlin', 'DD.MM.YYYY') using errcode = 'P0001';
+        end if;
+    end if;
+
+    -- Nachträglich ändern darf man nur Abschlussdatum und Kommentar
+    if tg_op = 'UPDATE' then
+        if new.level <> old.level or new.before_start <> old.before_start or new.user_id <> old.user_id then
+            raise exception 'Nur Abschlussdatum und Kommentar einer Quest können geändert werden.' using errcode = 'P0001';
+        end if;
+        if old.before_start and new.completed_at is distinct from old.completed_at then
+            raise exception 'Vor Spielbeginn erledigte Quests haben kein Abschlussdatum zum Ändern.' using errcode = 'P0001';
+        end if;
+        return new;
     end if;
 
     if new.before_start then
@@ -254,6 +308,7 @@ returns table (
     hardcore           boolean,
     started            boolean,
     visible            boolean,
+    shared             boolean,      -- Questlog darf ich öffnen (freigegeben, eigenes oder ich bin Gamemaster)
     quests_7d          int,          -- in den letzten 7 Tagen abgeschlossen
     last_level         int,          -- zuletzt abgeschlossene Quest (ohne Starthilfe)
     last_quest         text,
@@ -295,6 +350,7 @@ language sql stable security definer set search_path = public as $$
            p.hardcore,
            p.game_started_at is not null,
            p.visible,
+           p.share_questlog or p.id = auth.uid() or public.is_gamemaster(),
            coalesce(pr.quests_7d, 0),
            l.level, l.name, l.completed_at,
            coalesce(to_char(p.birthday, 'MM-DD') = to_char(now() at time zone 'Europe/Berlin', 'MM-DD'), false)
@@ -320,6 +376,25 @@ language sql stable security definer set search_path = public as $$
     limit least(greatest(coalesce(max_rows, 15), 1), 50);
 $$;
 
+-- Kopf eines fremden Questlogs: nur unkritische Felder (keine Notizen, kein Geburtsdatum),
+-- und nur, wenn can_view_questlog es erlaubt. can_edit = eigenes Questlog oder Gamemaster.
+drop function if exists public.get_questlog_owner(uuid);
+create or replace function public.get_questlog_owner(owner uuid)
+returns table (id uuid, name text, role text, avatar_url text, hardcore boolean, starthilfe boolean,
+               game_started_at timestamptz, visible boolean, share_questlog boolean, can_edit boolean)
+language sql stable security definer set search_path = public as $$
+    select p.id,
+           coalesce(nullif(trim(p.player_name), ''), nullif(trim(p.display_name), ''), 'Spieler:in'),
+           p.role,
+           case when p.show_avatar or p.id = auth.uid() then p.avatar_url end,
+           p.hardcore, p.starthilfe, p.game_started_at, p.visible, p.share_questlog,
+           p.id = auth.uid() or public.is_gamemaster()
+    from public.profiles p
+    where p.id = owner and public.can_view_questlog(owner);
+$$;
+
+revoke all on function public.get_questlog_owner(uuid) from public;
+grant execute on function public.get_questlog_owner(uuid) to authenticated;
 revoke all on function public.get_mitspieler() from public;
 revoke all on function public.get_aktivitaet(int) from public;
 grant execute on function public.get_mitspieler() to authenticated;
@@ -332,13 +407,14 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('avatars', 'avatars', false, 1048576, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
--- Darf der angemeldete Spieler dieses Bild sehen? (eigenes immer, fremdes nur mit show_avatar + visible)
+-- Darf der angemeldete Spieler dieses Bild sehen? (eigenes immer, fremdes nur mit show_avatar + visible,
+-- Gamemaster auch bei ausgeblendeten Spielern, damit das Bild in deren Questlog erscheint)
 create or replace function public.avatar_visible(object_name text)
 returns boolean language sql stable security definer set search_path = public as $$
     select exists (
         select 1 from public.profiles p
         where p.avatar_url = object_name
-          and (p.id = auth.uid() or (p.show_avatar and p.visible))
+          and (p.id = auth.uid() or (p.show_avatar and (p.visible or public.is_gamemaster())))
     );
 $$;
 revoke all on function public.avatar_visible(text) from public;
