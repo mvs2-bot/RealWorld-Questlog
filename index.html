@@ -28,10 +28,16 @@
             <div class="sub">Quest Log · Offline Edition</div>
         </div>
         <div class="header-actions">
-            <a id="gmBtn" class="icon-btn" href="gamemaster.html" aria-label="Gamemaster-Bereich" title="Gamemaster-Bereich" hidden>🛡️</a>
-            <a id="meBtn" class="icon-btn me-btn" href="#konto" aria-label="Mein Konto" title="Mein Konto" hidden>👤</a>
-            <button id="logoutBtn" class="icon-btn" type="button" aria-label="Abmelden" title="Abmelden" hidden>🚪</button>
             <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+            <div class="me-wrap">
+                <button id="meBtn" class="icon-btn me-btn" type="button" aria-label="Mein Konto" title="Mein Konto" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu" hidden>👤</button>
+                <div id="meMenu" class="me-menu" role="menu" hidden>
+                    <div class="me-head"><span id="menuAva" class="ava"></span><div><b id="menuName"></b><small id="menuEmail"></small></div></div>
+                    <a id="menuKonto" class="me-item" href="#konto" role="menuitem">⚙️ Kontoeinstellungen</a>
+                    <a id="gmBtn" class="me-item" href="gamemaster.html" role="menuitem" hidden>🛡️ Gamemaster-Bereich</a>
+                    <button id="logoutBtn" class="me-item danger" type="button" role="menuitem">🚪 Abmelden</button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -41,7 +47,6 @@
     <nav class="tabs" id="mainNav" aria-label="Bereiche" hidden>
         <a href="#start" data-tab="start">🏠 Start</a>
         <a href="#questlog" data-tab="questlog">📜 Questlog</a>
-        <a href="#konto" data-tab="konto">👤 Konto</a>
     </nav>
 
     <!-- Nicht angemeldet -->
@@ -311,7 +316,7 @@
 
     /* ───────── Nicht angemeldet ───────── */
     async function renderLoggedOut() {
-        only('#viewLoggedOut'); show($('#logoutBtn'), false); show($('#gmBtn'), false); show($('#meBtn'), false);
+        only('#viewLoggedOut'); show($('#meBtn'), false); show($('#gmBtn'), false); closeMenu();
         const s = await RQ.publicStats();
         $('#publicStats').innerHTML = [
             ['🎮', s ? fmtNum(s.players) : '–', 'Spieler'],
@@ -348,7 +353,7 @@
     const radio = name => document.querySelector(`input[name="${name}"]:checked`).value === '1';
     const showGm = () => show($('#gmBtn'), !!(game && game.profile && game.profile.role === 'gamemaster'));
     function renderSetup() {
-        only('#viewSetup'); show($('#logoutBtn')); showGm();
+        only('#viewSetup'); show($('#meBtn')); showGm();
         const p = game.profile || {};
         $('#setupName').value = p.player_name || p.display_name || '';
         $('#setupBirthday').max = RQ.today();
@@ -396,7 +401,7 @@
 
     /* Fremdes Questlog laden (#questlog/<konto-id>) */
     async function renderOther(id) {
-        only('#viewGame'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), false);
+        only('#viewGame'); show($('#meBtn')); showGm(); show($('#offlineHint'), false);
         ['#legendBox', '#notesBox'].forEach(s => show($(s), false));
         show($('#viewingBox'), false);
         $('#phaseList').innerHTML = '<div class="box"><p class="note" style="margin:0">⏳ Questlog wird geladen …</p></div>';
@@ -422,7 +427,7 @@
     }
 
     function renderGame(offline) {
-        only('#viewGame'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!offline);
+        only('#viewGame'); show($('#meBtn')); showGm(); show($('#offlineHint'), !!offline);
         show($('#viewingBox'), !!cur.other); show($('#notesBox'), !cur.other);
         $('#phaseList').classList.toggle('readonly', !editable());
         const p = cur.profile, n = doneCount();
@@ -557,7 +562,8 @@
         const b = $('#meBtn');
         b.classList.toggle('has-photo', !!myAvatar);
         b.innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : '👤';
-        ['#dashAva', '#accAva'].forEach(s => { $(s).innerHTML = avaHtml(myName(), myAvatar); });
+        $('#menuName').textContent = myName(); $('#menuEmail').textContent = (game && game.email) || '';
+        ['#dashAva', '#accAva', '#menuAva'].forEach(s => { $(s).innerHTML = avaHtml(myName(), myAvatar); });
     }
 
     /* ───────── Start-Dashboard ───────── */
@@ -593,7 +599,7 @@
 
     async function renderDashboard() {
         cur = game;
-        only('#viewDashboard'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!game.offline);
+        only('#viewDashboard'); show($('#meBtn')); showGm(); show($('#offlineHint'), !!game.offline);
         msg($('#dashMsg'), '');
         renderHero();
         if (!dash) {
@@ -675,7 +681,7 @@
 
     /* ───────── Kontobereich ───────── */
     function renderAccount() {
-        only('#viewAccount'); show($('#logoutBtn')); showGm(); show($('#offlineHint'), !!game.offline);
+        only('#viewAccount'); show($('#meBtn')); showGm(); show($('#offlineHint'), !!game.offline);
         const p = game.profile;
         paintMyAvatar();
         show($('#removePhoto'), !!p.avatar_url);
@@ -739,7 +745,7 @@
         catch (err) { msg($('#pwMsg'), RQ.errorText(err)); }
     };
 
-    /* ───────── Bereiche (Start / Questlog / Konto) ───────── */
+    /* ───────── Bereiche (Start / Questlog, Konto über das Profilmenü) ───────── */
     function showTab() {
         const tab = location.hash.replace('#', '');
         const m = /^questlog\/([0-9a-z-]+)$/i.exec(tab);
@@ -755,6 +761,18 @@
         showTab(); window.scrollTo(0, 0);
     });
 
+    /* Profilmenü am Profilbild: Kontoeinstellungen, Gamemaster-Bereich, Abmelden */
+    function closeMenu() { show($('#meMenu'), false); $('#meBtn').setAttribute('aria-expanded', 'false'); }
+    $('#meBtn').onclick = e => {
+        e.stopPropagation();
+        if (!$('#meMenu').hidden) return closeMenu();
+        show($('#meMenu')); $('#meBtn').setAttribute('aria-expanded', 'true');
+        const first = $('#meMenu .me-item:not([hidden])'); if (first) first.focus();
+    };
+    $('#meMenu').onclick = e => { if (e.target.closest('.me-item')) closeMenu(); };
+    document.addEventListener('click', e => { if (!$('#meMenu').hidden && !$('#meMenu').contains(e.target)) closeMenu(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#meMenu').hidden) { closeMenu(); $('#meBtn').focus(); } });
+
     async function logout() { await RQ.signOut(); location.replace(location.pathname); }
     $('#logoutBtn').onclick = logout; $('#logoutBtn2').onclick = logout;
 
@@ -768,7 +786,7 @@
         try { game = await RQ.loadGame(); }
         catch (e) { only('#viewGame'); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
         if (!game.quests.length) { only('#viewGame'); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
-        show($('#meBtn'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar();
+        show($('#menuKonto'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar();
         return game.profile && game.profile.game_started_at ? showTab() : renderSetup();
     }
 
