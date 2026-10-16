@@ -5,7 +5,7 @@
 -- Tabellen
 --   phases          6 Phasen (Noob Phase … The final Step) inkl. Belohnungs-Titel
 --   quests          100 Quests, eine pro Level
---   profiles        ein Spieler pro Benutzerkonto (Spielername, Grundregeln, Notizen)
+--   profiles        ein Spieler pro Benutzerkonto (Rolle, Spielername, Grundregeln, Notizen)
 --   quest_progress  welche Quests ein Spieler wann abgeschlossen hat
 --
 -- Spielregeln, die die Datenbank selbst durchsetzt
@@ -13,6 +13,11 @@
 --   - Starthilfe: nur vor Spielbeginn dürfen Quests als "schon erledigt" markiert werden.
 --   - Hardcore Mode: Quest n erst, wenn 1 … n-1 abgeschlossen sind.
 --   - Level 100 erst, wenn alle Level 1 … 99 abgeschlossen sind (gilt immer).
+--
+-- Rollen
+--   gamemaster  verwaltet die Konten (Seite gamemaster.html + Edge Function "gamemaster")
+--   spieler     normales Mitglied (Standard)
+--   Die Rolle kann man sich nicht selbst geben: nur der SQL Editor und die Gamemaster-Funktion ändern sie.
 
 -- ───────────────────────── Tabellen ─────────────────────────
 
@@ -46,6 +51,11 @@ create table if not exists public.profiles (
     created_at       timestamptz not null default now()
 );
 
+-- Rolle (nachträglich ergänzt, damit das Skript auch auf bestehenden Datenbanken läuft)
+alter table public.profiles add column if not exists role text not null default 'spieler';
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check check (role in ('gamemaster', 'spieler'));
+
 create table if not exists public.quest_progress (
     user_id       uuid not null default auth.uid() references auth.users(id) on delete cascade,
     level         int  not null references public.quests(level),
@@ -69,6 +79,8 @@ revoke all on public.phases, public.quests, public.profiles, public.quest_progre
 grant select on public.phases, public.quests to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.quest_progress to authenticated;
+-- Die Gamemaster-Funktion arbeitet mit dem service_role-Schlüssel (umgeht RLS, braucht aber Tabellenrechte)
+grant select, insert, update, delete on public.phases, public.quests, public.profiles, public.quest_progress to service_role;
 
 -- Phasen & Quests: nur für angemeldete Spieler lesbar, ändern nur über den SQL Editor
 drop policy if exists "phases lesen" on public.phases;
@@ -109,6 +121,24 @@ end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
     for each row execute function public.handle_new_user();
+
+-- Rolle: angemeldete Spieler können sie weder beim Anlegen noch später selbst setzen
+create or replace function public.protect_role()
+returns trigger language plpgsql set search_path = public as $$
+begin
+    if current_user in ('authenticated', 'anon') then
+        if tg_op = 'INSERT' then
+            new.role := 'spieler';
+        elsif new.role is distinct from old.role then
+            raise exception 'Die Rolle kann nur der Gamemaster ändern.' using errcode = 'P0001';
+        end if;
+    end if;
+    return new;
+end $$;
+
+drop trigger if exists profiles_protect_role on public.profiles;
+create trigger profiles_protect_role before insert or update on public.profiles
+    for each row execute function public.protect_role();
 
 -- Grundregeln sind nach Spielbeginn fest, der Spielbeginn selbst auch
 create or replace function public.lock_rules_after_start()

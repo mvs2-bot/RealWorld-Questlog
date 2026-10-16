@@ -2,8 +2,8 @@
 
 **100 Quests. 100 Level. 1 Spieler. Unendlich XP.**
 
-Das Questlog aus dem Buch „The Real World – Offline Edition“ als Webseite: Jeder legt sich ein
-Konto an, wählt die Grundregeln (Starthilfe, Hardcore Mode) und hakt Quests ab. Mit jeder Quest
+Das Questlog aus dem Buch „The Real World – Offline Edition“ als Webseite: Der Gamemaster legt
+für jeden ein Konto an, man wählt die Grundregeln (Starthilfe, Hardcore Mode) und hakt Quests ab. Mit jeder Quest
 steigt man ein Level auf, nach jeder Phase wird ein Titel freigeschaltet.
 
 Die Seite in diesem Repo ist nur eine „leere Hülle“: Die Quest-Texte und alle Spielstände liegen
@@ -12,11 +12,14 @@ in Supabase (Projekt `realworld-questlog`) und werden erst nach dem Login gelade
 ## Aufbau
 
 ```
-index.html               Startseite mit Login/Registrierung, Spielstart und Questlog
+index.html               Startseite mit Login, Spielstart und Questlog
+gamemaster.html          Gamemaster-Bereich: Konten anlegen, ansehen, ändern, löschen
+shared/style.css         gemeinsames Aussehen beider Seiten
 shared/config.js         Supabase-URL + Publishable Key (dürfen öffentlich sein)
 shared/questlog.js       Konten, Spielstand laden/speichern, Offline-Zwischenspeicher
 sw.js, manifest.json     App zum Installieren + Offline-Modus
-supabase/schema.sql      Tabellen, Zugriffsregeln und Spielregeln für die Datenbank
+supabase/schema.sql      Tabellen, Zugriffsregeln, Rollen und Spielregeln für die Datenbank
+supabase/functions/      Edge Function "gamemaster" für die Kontenverwaltung
 .github/workflows/       Keepalive, damit das kostenlose Supabase-Projekt nicht pausiert
 ```
 
@@ -29,6 +32,21 @@ supabase/schema.sql      Tabellen, Zugriffsregeln und Spielregeln für die Daten
 5. Unter Authentication → URL Configuration die Adresse der Webseite als Site URL bzw. Redirect URL eintragen,
    damit Bestätigungs- und Passwort-Links zurück auf die Seite führen.
 6. In den Repo-Einstellungen GitHub Pages aktivieren (Branch `main`, Ordner `/`).
+7. Unter Authentication → Sign In / Providers „Allow new users to sign up“ ausschalten.
+8. Unter Edge Functions → „Deploy a new function“ → „Via Editor“ die Funktion `gamemaster` mit dem Inhalt von
+   `supabase/functions/gamemaster/index.ts` anlegen und in ihren Einstellungen „Verify JWT“ ausschalten
+   (die Funktion prüft die Anmeldung selbst).
+9. Den ersten Gamemaster unter Authentication → Users → „Add user“ anlegen (Auto Confirm) und im SQL Editor
+   freischalten: `update public.profiles set role = 'gamemaster' where id = (select id from auth.users where email = '…');`
+   Alle weiteren Konten legt der Gamemaster danach auf `gamemaster.html` an.
+
+## Rollen
+
+- **Gamemaster**: spielt mit und sieht zusätzlich den 🛡️-Knopf zum Gamemaster-Bereich.
+- **Spieler:in**: normales Mitglied. Der Gamemaster-Bereich ist gesperrt, sowohl auf der Seite als auch in der
+  Edge Function, die jede Anfrage selbst gegen die Rolle in der Datenbank prüft.
+- Die Rolle kann sich niemand selbst geben; das verhindert ein Trigger in der Datenbank.
+- Passwörter speichert Supabase nur als Hash. Der Gamemaster kann sie nicht sehen, aber neu setzen.
 
 ## Spielregeln in der Datenbank
 
