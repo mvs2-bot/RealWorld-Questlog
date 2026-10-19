@@ -17,6 +17,7 @@ gamemaster.html          Gamemaster-Bereich: Spieler:innen anlegen, ansehen, än
 shared/style.css         gemeinsames Aussehen beider Seiten
 shared/config.js         Supabase-URL + Publishable Key (dürfen öffentlich sein)
 shared/questlog.js       Konten, Spielstand laden/speichern, Offline-Zwischenspeicher
+shared/overall-account.js  gemeinsames Konto-Modul aller Apps (Kopie, Original im Repo supabase-core)
 sw.js, manifest.json     App zum Installieren + Offline-Modus
 supabase/schema.sql      Schema des alten Projekts (nur noch zum Nachschlagen, aktuell: Repo supabase-core)
 supabase/functions/      Edge Function "gamemaster" für die Kontenverwaltung
@@ -48,8 +49,9 @@ Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und 
   Gruppen-Zahlen (Quests gesamt, diese Woche, Wochen-Champion) und ein Hinweis, wenn jemand Geburtstag hat.
 - **Questlog**: alle 100 Quests mit Emoji wie im Buch. Bei abgeschlossenen Quests lassen sich das
   Abschlussdatum (nicht in der Zukunft, nicht vor Spielbeginn) und ein Kommentar nachträglich ändern.
-- **Konto**: Profilbild hochladen (wird wie bei TravelBase quadratisch auf 400 px verkleinert), Spielername,
-  Geburtsdatum (das Alter rechnet die Seite selbst aus), Passwort ändern und drei Schalter:
+- **Konto**: Spielername (nur im Questlog) und drei Schalter. Profilbild, Anzeigename, Geburtsdatum, Geschlecht,
+  Größe, Gewicht und Passwort bearbeitet man über „Kontoeinstellungen“ im gemeinsamen Konto-Modul; sie gelten
+  für alle Apps. Die Schalter:
   - *Für Mitspieler sichtbar*: aus = man fehlt bei allen anderen in Dashboard, Scoreboard und Aktivität,
     auch bei Gamemastern. Die Kontenverwaltung auf `gamemaster.html` listet weiterhin alle Konten.
   - *Profilbild für Mitspieler sichtbar*: aus = die anderen sehen nur die Initialen.

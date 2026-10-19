@@ -18,6 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <script src="shared/config.js"></script>
     <script src="shared/questlog.js"></script>
+    <script src="shared/overall-account.js"></script>
     <link rel="stylesheet" href="shared/style.css">
 </head>
 <body>
@@ -168,22 +169,19 @@
     <section id="viewAccount" hidden>
         <div class="box">
             <h2>👤 Mein Konto</h2>
+            <p class="note">Profilbild, Anzeigename, Geburtsdatum, Geschlecht, Größe, Gewicht und Passwort gelten für alle Apps (auch TravelBase).</p>
             <div class="photo-row">
                 <span class="ava ava-xl" id="accAva" aria-hidden="true"></span>
                 <div class="photo-actions">
-                    <button class="btn-ghost" type="button" id="pickPhoto">📷 Profilbild wählen</button>
-                    <button class="link-btn danger" type="button" id="removePhoto" hidden>Profilbild entfernen</button>
-                    <input type="file" id="photoFile" accept="image/*" hidden>
-                    <p class="note" style="margin:0">Wird quadratisch zugeschnitten und verkleinert.</p>
+                    <b id="accDisplay"></b>
+                    <span class="note" style="margin:0" id="accEmail"></span>
+                    <span class="hint" id="accAge"></span>
+                    <button class="btn-ghost" type="button" id="accSettings">⚙️ Kontoeinstellungen</button>
+                    <button class="btn-ghost" type="button" id="accPassword">🔑 Passwort ändern</button>
                 </div>
             </div>
-            <div id="photoMsg" class="msg" hidden></div>
-            <form id="accForm" style="margin-top:16px">
-                <div class="grid2">
-                    <label>Spielername<input type="text" id="accName" maxlength="40" required></label>
-                    <label>Geburtsdatum<input type="date" id="accBirthday" min="1900-01-01"><span class="hint" id="accAge"></span></label>
-                </div>
-                <label>E-Mail<input type="email" id="accEmail" disabled></label>
+            <form id="accForm" style="margin-top:16px;max-width:360px">
+                <label>Spielername (nur im Questlog)<input type="text" id="accName" maxlength="40" required></label>
                 <button class="btn" type="submit" id="accSave" style="align-self:flex-start">Speichern</button>
             </form>
             <div id="accMsg" class="msg" hidden></div>
@@ -199,17 +197,6 @@
             <label class="switch"><input type="checkbox" id="optShare">
                 <span><b>Questlog für Mitspieler freigeben</b><small>Mitspieler können dich auf der Startseite anklicken und dein Questlog ansehen, aber nichts ändern. Gamemaster können jedes Questlog öffnen und bearbeiten.</small></span></label>
             <div id="privMsg" class="msg" hidden></div>
-        </div>
-
-        <div class="box">
-            <h2>🔑 Passwort ändern</h2>
-            <form id="pwForm" style="max-width:360px">
-                <input type="email" id="pwUser" autocomplete="username" hidden>
-                <label>Neues Passwort<input type="password" id="pw1" autocomplete="new-password" minlength="8" required></label>
-                <label>Neues Passwort wiederholen<input type="password" id="pw2" autocomplete="new-password" minlength="8" required></label>
-                <button class="btn" type="submit" style="align-self:flex-start">Passwort speichern</button>
-            </form>
-            <div id="pwMsg" class="msg" hidden></div>
         </div>
 
         <div class="box">
@@ -684,12 +671,10 @@
         only('#viewAccount'); show($('#meBtn')); showGm(); show($('#offlineHint'), !!game.offline);
         const p = game.profile;
         paintMyAvatar();
-        show($('#removePhoto'), !!p.avatar_url);
         $('#accName').value = p.player_name || p.display_name || '';
-        $('#accBirthday').max = RQ.today();
-        $('#accBirthday').value = p.birthday || '';
-        $('#accAge').textContent = ageText(p.birthday) || (p.age ? `Bisher eingetragen: ${p.age} Jahre` : '');
-        $('#accEmail').value = $('#pwUser').value = game.email || '';
+        $('#accDisplay').textContent = p.display_name || game.email || '';
+        $('#accAge').textContent = ageText(p.birthday);
+        $('#accEmail').textContent = game.email || '';
         $('#userEmail').textContent = game.email || '';
         $('#optVisible').checked = p.visible !== false;
         $('#optAvatar').checked = p.show_avatar !== false;
@@ -703,31 +688,20 @@
     }
     function updated(profile) { Object.assign(game.profile, profile); RQ.cacheSet('game_' + game.profile.id, game); dash = null; }
 
-    $('#accBirthday').oninput = () => { $('#accAge').textContent = ageText($('#accBirthday').value); };
     $('#accForm').onsubmit = async e => {
         e.preventDefault();
-        const birthday = $('#accBirthday').value || null;
-        if (badBirthday(birthday)) return msg($('#accMsg'), badBirthday(birthday));
         const btn = $('#accSave'); btn.disabled = true; msg($('#accMsg'), '');
-        try { updated(await RQ.saveProfile({ player_name: $('#accName').value.trim(), birthday })); paintMyAvatar(); msg($('#accMsg'), '✅ Gespeichert.', true); }
+        try { updated(await RQ.saveProfile({ player_name: $('#accName').value.trim() })); paintMyAvatar(); msg($('#accMsg'), '✅ Gespeichert.', true); }
         catch (err) { msg($('#accMsg'), RQ.errorText(err)); }
         finally { btn.disabled = false; }
     };
 
-    $('#pickPhoto').onclick = () => $('#photoFile').click();
-    $('#photoFile').onchange = async () => {
-        const f = $('#photoFile').files[0]; $('#photoFile').value = '';
-        if (!f) return;
-        $('#pickPhoto').disabled = true; msg($('#photoMsg'), '⏳ Profilbild wird hochgeladen …', true);
-        try { updated(await RQ.uploadAvatar(f, game.profile.avatar_url)); await loadMyAvatar(); show($('#removePhoto')); msg($('#photoMsg'), '✅ Profilbild gespeichert.', true); }
-        catch (err) { msg($('#photoMsg'), RQ.errorText(err)); }
-        finally { $('#pickPhoto').disabled = false; }
-    };
-    $('#removePhoto').onclick = async () => {
-        if (!confirm('Profilbild wirklich entfernen?')) return;
-        try { updated(await RQ.removeAvatar(game.profile.avatar_url)); await loadMyAvatar(); show($('#removePhoto'), false); msg($('#photoMsg'), '✅ Profilbild entfernt.', true); }
-        catch (err) { msg($('#photoMsg'), RQ.errorText(err)); }
-    };
+    /* Globale Kontodaten bearbeitet das gemeinsame Konto-Modul (shared/overall-account.js) */
+    $('#accSettings').onclick = () => OverallAccount.openSettings({ sb: RQ.sb, onChange: async p => {
+        updated({ display_name: p.display_name, birthday: p.birthday, avatar_url: p.avatar_path });
+        await loadMyAvatar(); renderAccount();
+    } });
+    $('#accPassword').onclick = () => OverallAccount.openPassword({ sb: RQ.sb });
 
     async function savePrivacy(field, box) {
         msg($('#privMsg'), '');
@@ -738,12 +712,6 @@
     $('#optAvatar').onchange = () => savePrivacy('show_avatar', $('#optAvatar'));
     $('#optShare').onchange = () => savePrivacy('share_questlog', $('#optShare'));
 
-    $('#pwForm').onsubmit = async e => {
-        e.preventDefault();
-        if ($('#pw1').value !== $('#pw2').value) return msg($('#pwMsg'), 'Die beiden Passwörter sind nicht gleich.');
-        try { await RQ.updatePassword($('#pw1').value); $('#pwForm').reset(); $('#pwUser').value = game.email || ''; msg($('#pwMsg'), '✅ Passwort geändert.', true); }
-        catch (err) { msg($('#pwMsg'), RQ.errorText(err)); }
-    };
 
     /* ───────── Bereiche (Start / Questlog, Konto über das Profilmenü) ───────── */
     function showTab() {
