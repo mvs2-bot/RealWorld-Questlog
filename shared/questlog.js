@@ -28,7 +28,7 @@
     async function publicStats() {
         if (!sb) return cacheGet('stats');
         try {
-            const rows = check(await sb.rpc('get_public_stats'));
+            const rows = check(await sb.rpc('questlog_get_public_stats'));
             const s = rows && rows[0] || null;
             cacheSet('stats', s);
             return s;
@@ -36,6 +36,23 @@
     }
 
     const PROGRESS = 'level, completed_at, before_start, note';
+
+    /* Das Profil setzt sich aus dem globalen Konto (overall_profiles: Anzeigename, Geburtsdatum, Profilbild)
+       und dem Questlog-Spielstand (questlog_players) zusammen. Die Rolle kommt aus dem App-Zugang:
+       admin = Gamemaster, sonst Spieler:in. Ohne Zugang zur App gibt es kein Questlog. */
+    const GLOBAL = { display_name: 'display_name', birthday: 'birthday', avatar_url: 'avatar_path' };
+    const NO_ACCESS = 'Dein Konto hat noch keinen Zugang zum Questlog. Bitte den Gamemaster, dich freizuschalten.';
+
+    async function readProfile(id) {
+        const [o, p, role] = await Promise.all([
+            sb.from('overall_profiles').select('display_name, birthday, avatar_path').eq('id', id).maybeSingle().then(check),
+            sb.from('questlog_players').select('*').eq('id', id).maybeSingle().then(check),
+            sb.rpc('overall_app_role', { p_app: 'questlog' }).then(check)
+        ]);
+        if (!role) throw new Error(NO_ACCESS);
+        return { ...(p || {}), id, display_name: o && o.display_name, birthday: o && o.birthday,
+            avatar_url: o && o.avatar_path, role: role === 'admin' ? 'gamemaster' : 'spieler' };
+    }
 
     /* Kompletter Spielstand des angemeldeten Spielers:
        { profile, phases, quests, progress: { [level]: row }, offline } */
@@ -45,10 +62,10 @@
         const key = 'game_' + session.user.id;
         try {
             const [profile, phases, quests, progress] = await Promise.all([
-                sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle().then(check),
-                sb.from('phases').select('*').order('id').then(check),
-                sb.from('quests').select('*').order('level').then(check),
-                sb.from('quest_progress').select(PROGRESS).eq('user_id', session.user.id).then(check)
+                readProfile(session.user.id),
+                sb.from('questlog_phases').select('*').order('id').then(check),
+                sb.from('questlog_quests').select('*').order('level').then(check),
+                sb.from('questlog_quest_progress').select(PROGRESS).eq('user_id', session.user.id).then(check)
             ]);
             const game = { profile, phases, quests, progress: Object.fromEntries(progress.map(p => [p.level, p])), email: session.user.email };
             cacheSet(key, game);
@@ -62,15 +79,18 @@
 
     async function saveProfile(fields) {
         needSb();
-        const session = await getSession();
-        return check(await sb.from('profiles').upsert({ id: session.user.id, ...fields }).select().single());
+        const id = (await getSession()).user.id, global = {}, game = {};
+        for (const [k, v] of Object.entries(fields)) { if (GLOBAL[k]) global[GLOBAL[k]] = v; else game[k] = v; }
+        if (Object.keys(global).length) check(await sb.from('overall_profiles').update(global).eq('id', id));
+        if (Object.keys(game).length) check(await sb.from('questlog_players').upsert({ id, ...game }));
+        return readProfile(id);
     }
 
     /* Spielstart: erst die per Starthilfe erledigten Quests eintragen, dann die Regeln festschreiben */
     async function startGame({ player_name, birthday, starthilfe, hardcore, alreadyDone }) {
         await saveProfile({ player_name, birthday, starthilfe, hardcore });
         if (starthilfe && alreadyDone.length) {
-            check(await sb.from('quest_progress').insert(alreadyDone.map(level => ({ level, before_start: true }))));
+            check(await sb.from('questlog_quest_progress').insert(alreadyDone.map(level => ({ level, before_start: true }))));
         }
         return saveProfile({ game_started_at: new Date().toISOString() });
     }
@@ -81,18 +101,18 @@
 
     async function completeQuest(level, userId) {
         needSb();
-        return check(await sb.from('quest_progress').insert({ level, user_id: await uid(userId) }).select(PROGRESS).single());
+        return check(await sb.from('questlog_quest_progress').insert({ level, user_id: await uid(userId) }).select(PROGRESS).single());
     }
 
     async function undoQuest(level, userId) {
         needSb();
-        check(await sb.from('quest_progress').delete().eq('user_id', await uid(userId)).eq('level', level));
+        check(await sb.from('questlog_quest_progress').delete().eq('user_id', await uid(userId)).eq('level', level));
     }
 
     /* Abschlussdatum und/oder Kommentar ändern: fields = { completed_at?, note? } */
     async function updateQuest(level, fields, userId) {
         needSb();
-        const rows = check(await sb.from('quest_progress').update(fields).eq('user_id', await uid(userId)).eq('level', level).select(PROGRESS));
+        const rows = check(await sb.from('questlog_quest_progress').update(fields).eq('user_id', await uid(userId)).eq('level', level).select(PROGRESS));
         if (!rows || !rows.length) throw new Error('Keine Berechtigung für diese Aktion.');
         return rows[0];
     }
@@ -102,10 +122,10 @@
          progress: { [level]: row } } – null, wenn man es nicht sehen darf */
     async function loadPlayerLog(userId) {
         needSb();
-        const rows = check(await sb.rpc('get_questlog_owner', { owner: userId }));
+        const rows = check(await sb.rpc('questlog_get_owner', { p_owner: userId }));
         const owner = rows && rows[0];
         if (!owner) return null;
-        const progress = check(await sb.from('quest_progress').select(PROGRESS).eq('user_id', userId));
+        const progress = check(await sb.from('questlog_quest_progress').select(PROGRESS).eq('user_id', userId));
         return { owner, progress: Object.fromEntries(progress.map(p => [p.level, p])) };
     }
 
@@ -169,7 +189,8 @@
         return age >= 0 ? age : null;
     }
 
-    /* Profilbilder liegen im privaten Bucket "avatars" unter <user-id>/…, der Pfad steht in profiles.avatar_url.
+    /* Profilbilder liegen im privaten Bucket "avatars" unter <user-id>/…, der Pfad steht global in overall_profiles.avatar_path
+       (wie bei TravelBase, ein Bild für alle Apps).
        Angezeigt werden sie über kurzlebige signierte Links; wer ein Bild sehen darf, prüft Supabase. */
     const AVATARS = 'avatars';
     const signed = {};   /* Pfad → { url, until } */
@@ -227,8 +248,8 @@
         const key = 'dash_' + session.user.id;
         try {
             const [players, activity] = await Promise.all([
-                sb.rpc('get_mitspieler').then(check),
-                sb.rpc('get_aktivitaet', { max_rows: 12 }).then(check)
+                sb.rpc('questlog_get_mitspieler').then(check),
+                sb.rpc('questlog_get_aktivitaet', { max_rows: 12 }).then(check)
             ]);
             const dash = { players: players || [], activity: activity || [] };
             cacheSet(key, dash);
@@ -247,9 +268,8 @@
         if (/email not confirmed/i.test(m)) return 'Diese E-Mail ist noch nicht bestätigt. Schau in dein Postfach.';
         if (/already registered|already been registered/i.test(m)) return 'Für diese E-Mail gibt es schon ein Konto.';
         if (/password should be at least|weak password/i.test(m)) return 'Das Passwort ist zu kurz oder zu einfach (mind. 8 Zeichen empfohlen).';
-        if (/permission denied for table/i.test(m)) return 'Die Datenbank verweigert den Zugriff. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
-        if (/could not find the function|bucket not found|column .*(birthday|show_avatar|avatar_url|visible|share_questlog)|(birthday|show_avatar|avatar_url|visible|share_questlog).* column/i.test(m))
-            return 'Für diese Funktion fehlt noch die Datenbank-Erweiterung. Bitte supabase/schema.sql im Supabase SQL Editor erneut ausführen.';
+        if (/permission denied for table|could not find the function|bucket not found/i.test(m))
+            return 'Die Datenbank ist noch nicht vollständig eingerichtet (Migrationen im Repo supabase-core).';
         if (/row-level security/i.test(m)) return 'Keine Berechtigung für diese Aktion.';
         if (/payload too large|exceeded the maximum|too large/i.test(m)) return 'Das Bild ist zu groß.';
         if (/rate limit|too many/i.test(m)) return 'Zu viele Versuche – bitte kurz warten.';

@@ -7,38 +7,37 @@ für jeden ein Konto an, man wählt die Grundregeln (Starthilfe, Hardcore Mode) 
 steigt man ein Level auf, nach jeder Phase wird ein Titel freigeschaltet.
 
 Die Seite in diesem Repo ist nur eine „leere Hülle“: Die Quest-Texte und alle Spielstände liegen
-in Supabase (Projekt `realworld-questlog`) und werden erst nach dem Login geladen.
+in Supabase (Core-Projekt `travelbase`, Tabellen `questlog_*`) und werden erst nach dem Login geladen.
 
 ## Aufbau
 
 ```
 index.html               Login, Spielstart, Start-Dashboard, Questlog und Kontobereich
-gamemaster.html          Gamemaster-Bereich: Konten anlegen, ansehen, ändern, löschen
+gamemaster.html          Gamemaster-Bereich: Spieler:innen anlegen, ansehen, ändern, entfernen
 shared/style.css         gemeinsames Aussehen beider Seiten
 shared/config.js         Supabase-URL + Publishable Key (dürfen öffentlich sein)
 shared/questlog.js       Konten, Spielstand laden/speichern, Offline-Zwischenspeicher
 sw.js, manifest.json     App zum Installieren + Offline-Modus
-supabase/schema.sql      Tabellen, Zugriffsregeln, Rollen und Spielregeln für die Datenbank
+supabase/schema.sql      Schema des alten Projekts (nur noch zum Nachschlagen, aktuell: Repo supabase-core)
 supabase/functions/      Edge Function "gamemaster" für die Kontenverwaltung
 .github/workflows/       Keepalive, damit das kostenlose Supabase-Projekt nicht pausiert
 ```
 
 ## Einrichtung
 
-1. In Supabase das Projekt `realworld-questlog` anlegen.
-2. Im SQL Editor `supabase/schema.sql` ausführen.
-3. Danach das Seed-Skript mit den 6 Phasen und 100 Quests ausführen (liegt **nicht** in diesem Repo).
-4. Unter Project Settings → API Keys die Project URL und den Publishable Key in `shared/config.js` eintragen.
-5. Unter Authentication → URL Configuration die Adresse der Webseite als Site URL bzw. Redirect URL eintragen,
-   damit Bestätigungs- und Passwort-Links zurück auf die Seite führen.
-6. In den Repo-Einstellungen GitHub Pages aktivieren (Branch `main`, Ordner `/`).
-7. Unter Authentication → Sign In / Providers „Allow new users to sign up“ ausschalten.
-8. Unter Edge Functions → „Deploy a new function“ → „Via Editor“ die Funktion `gamemaster` mit dem Inhalt von
-   `supabase/functions/gamemaster/index.ts` anlegen und in ihren Einstellungen „Verify JWT“ ausschalten
-   (die Funktion prüft die Anmeldung selbst).
-9. Den ersten Gamemaster unter Authentication → Users → „Add user“ anlegen (Auto Confirm) und im SQL Editor
-   freischalten: `update public.profiles set role = 'gamemaster' where id = (select id from auth.users where email = '…');`
-   Alle weiteren Konten legt der Gamemaster danach auf `gamemaster.html` an.
+Das Questlog läuft im gemeinsamen Supabase-Core-Projekt (`travelbase`, zusammen mit TravelBase).
+Konten und Profile (Anzeigename, Geburtsdatum, Profilbild) sind dort global, das Questlog nutzt die
+Tabellen mit Präfix `questlog_*`. Das Schema liegt als Migration im Repo `supabase-core`
+(`supabase/migrations/…_questlog_core.sql`); `supabase/schema.sql` hier ist nur noch der Stand des alten
+Projekts `realworld-questlog`.
+
+1. Phasen und Quests in `questlog_phases` und `questlog_quests` einspielen (Seed liegt **nicht** in diesem Repo).
+2. Unter Authentication → URL Configuration die Adresse der Webseite als Redirect URL eintragen,
+   damit Passwort-Links zurück auf die Seite führen.
+3. Unter Edge Functions die Funktion `gamemaster` mit dem Inhalt von `supabase/functions/gamemaster/index.ts`
+   anlegen und in ihren Einstellungen „Verify JWT“ ausschalten (die Funktion prüft die Anmeldung selbst).
+4. Zugang gibt es über `overall_app_access` (App `questlog`): Rolle `admin` = Gamemaster, `member` = Spieler:in.
+   Globale Admins sind automatisch Gamemaster. Weitere Spieler:innen legt der Gamemaster auf `gamemaster.html` an.
 
 ## Start-Dashboard und Kontobereich
 
@@ -56,8 +55,8 @@ Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und 
   - *Profilbild für Mitspieler sichtbar*: aus = die anderen sehen nur die Initialen.
   - *Questlog für Mitspieler freigeben*: an = Mitspieler können einen auf der Startseite anklicken und das
     Questlog ansehen (nur lesen, ohne die privaten Notizen).
-- Die Daten der anderen liefern die Datenbank-Funktionen `get_mitspieler` und `get_aktivitaet`; Geburtsdatum,
-  E-Mail und Notizen anderer Spieler verlassen die Datenbank nicht. Profilbilder liegen im privaten
+- Die Daten der anderen liefern die Datenbank-Funktionen `questlog_get_mitspieler` und `questlog_get_aktivitaet`; Geburtsdatum,
+  E-Mail und Notizen anderer Spieler verlassen die Datenbank nicht. Profilbilder liegen global (ein Bild für alle Apps) im privaten
   Storage-Bucket `avatars`, wer welches Bild sehen darf, prüft Supabase selbst.
 
 ## Rollen
@@ -65,7 +64,9 @@ Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und 
 - **Gamemaster**: spielt mit und sieht zusätzlich den 🛡️-Knopf zum Gamemaster-Bereich.
 - **Spieler:in**: normales Mitglied. Der Gamemaster-Bereich ist gesperrt, sowohl auf der Seite als auch in der
   Edge Function, die jede Anfrage selbst gegen die Rolle in der Datenbank prüft.
-- Die Rolle kann sich niemand selbst geben; das verhindert ein Trigger in der Datenbank.
+- Die Rolle kann sich niemand selbst geben: App-Zugänge vergeben nur Admins bzw. die Gamemaster-Funktion.
+- „Entfernen“ nimmt nur den Questlog-Zugang samt Spielstand weg; das Konto bleibt für die anderen Apps.
+  E-Mail und Passwort anderer Konten ändern nur globale Admins, weil sie für alle Apps gelten.
 - Passwörter speichert Supabase nur als Hash. Der Gamemaster kann sie nicht sehen, aber neu setzen.
 - Gamemaster können jedes Questlog öffnen (über die Startseite oder „📜 Questlog öffnen“ im Gamemaster-Bereich),
   auch nicht freigegebene und ausgeblendete, und dort Quests abschließen, wieder öffnen sowie Datum und Kommentar

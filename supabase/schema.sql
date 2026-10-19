@@ -1,3 +1,6 @@
+-- ALT: Schema des früheren Projekts realworld-questlog. Das Questlog läuft jetzt im Core-Projekt,
+-- das aktuelle Schema liegt im Repo supabase-core (Migration questlog_core). Nicht mehr ausführen.
+--
 -- The Real World – Quest Log: Datenbank-Schema für Supabase
 -- Einmalig im Supabase-Dashboard unter "SQL Editor" ausführen.
 -- Danach die Quest-Texte mit dem Seed-Skript einspielen (liegt NICHT in diesem Repo).

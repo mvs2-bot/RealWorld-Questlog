@@ -1,7 +1,7 @@
 name: Supabase wach halten
 
 # Kostenlose Supabase-Projekte pausieren nach ca. 7 Tagen ohne Aktivität.
-# Dieser Job ruft alle 3 Tage die öffentliche RPC get_public_stats auf,
+# Dieser Job ruft alle 3 Tage die öffentliche RPC questlog_get_public_stats auf,
 # das ist eine echte Datenbankabfrage und zählt als Aktivität.
 # URL und Publishable Key kommen aus shared/config.js (oder optional aus
 # den Repo-Secrets SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY).
@@ -38,7 +38,7 @@ jobs:
             exit 0
           fi
           status=$(curl -sS -o response.json -w '%{http_code}' --retry 3 --retry-delay 10 \
-            -X POST "$url/rest/v1/rpc/get_public_stats" \
+            -X POST "$url/rest/v1/rpc/questlog_get_public_stats" \
             -H "apikey: $key" \
             -H "Content-Type: application/json" \
             -d '{}')
