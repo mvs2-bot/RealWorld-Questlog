@@ -1,4 +1,10 @@
-// The Real World – Edge Function "gamemaster": Konten verwalten (nur für die Rolle Gamemaster)
+// The Real World – Edge Function "gamemaster": Spieler:innen verwalten (nur für Gamemaster)
+//
+// Läuft im Core-Projekt (travelbase), in dem auch TravelBase liegt. Konten sind dort global:
+// Gamemaster = Rolle admin in der App "questlog" (overall_app_access) oder globaler Admin.
+// Spieler:in = Rolle member. "Entfernen" nimmt nur den Questlog-Zugang samt Spielstand weg,
+// das Konto selbst bleibt für die anderen Apps bestehen. E-Mail und Passwort eines Kontos
+// ändern nur globale Admins, weil sie für alle Apps gelten.
 //
 // Veröffentlichen: Supabase → Edge Functions → "Deploy a new function" → "Via Editor",
 // Name "gamemaster", diesen Code einfügen, Deploy. Danach in den Function-Einstellungen
@@ -48,7 +54,10 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE
     auth: { persistSession: false, autoRefreshToken: false },
 });
 
-async function listAccounts() {
+const APP = 'questlog';
+const toAppRole = (role: string) => (role === 'gamemaster' ? 'admin' : 'member');
+
+async function allUsers() {
     // deno-lint-ignore no-explicit-any
     const users: any[] = [];
     for (let page = 1; ; page++) {
@@ -56,25 +65,43 @@ async function listAccounts() {
         users.push(...batch);
         if (batch.length < 1000) break;
     }
-    const profiles = check(await admin.from('profiles').select('id, role, display_name, player_name, age, birthday, visible, share_questlog, starthilfe, hardcore, game_started_at')) ?? [];
-    const progress = check(await admin.from('quest_progress').select('user_id')) ?? [];
+    return users;
+}
+
+async function appRole(id: string): Promise<string | null> {
+    return check(await admin.rpc('overall_user_app_role', { p_user: id, p_app: APP }));
+}
+
+async function isGlobalAdmin(id: string) {
+    const p = check(await admin.from('overall_profiles').select('role').eq('id', id).maybeSingle());
+    return p?.role === 'admin';
+}
+
+async function listAccounts() {
+    const players = check(await admin.from('questlog_players').select('id, player_name, visible, share_questlog, starthilfe, hardcore, game_started_at')) ?? [];
+    const access = check(await admin.from('overall_app_access').select('user_id, role').eq('app_id', APP)) ?? [];
+    const admins = check(await admin.from('overall_profiles').select('id').eq('role', 'admin')) ?? [];
+    const ids = new Set<string>([...players.map((p: { id: string }) => p.id), ...access.map((a: { user_id: string }) => a.user_id)]);
+    const profiles = check(await admin.from('overall_profiles').select('id, display_name, birthday').in('id', [...ids])) ?? [];
+    const progress = check(await admin.from('questlog_quest_progress').select('user_id')) ?? [];
     // deno-lint-ignore no-explicit-any
-    const byId = new Map<string, any>(profiles.map((p: any) => [p.id, p]));
+    const byId = (rows: any[]) => new Map<string, any>(rows.map((r) => [r.id ?? r.user_id, r]));
+    const pl = byId(players), pr = byId(profiles), ac = byId(access), ad = new Set(admins.map((a: { id: string }) => a.id));
     const levels = new Map<string, number>();
     for (const r of progress) levels.set(r.user_id, (levels.get(r.user_id) ?? 0) + 1);
-    return users.map((u) => {
-        const p = byId.get(u.id) ?? {};
+    return (await allUsers()).filter((u) => ids.has(u.id) && (ac.has(u.id) || ad.has(u.id))).map((u) => {
+        const p = pl.get(u.id) ?? {}, o = pr.get(u.id) ?? {};
         return {
             id: u.id,
             email: u.email,
             created_at: u.created_at,
             last_sign_in_at: u.last_sign_in_at ?? null,
             email_confirmed_at: u.email_confirmed_at ?? null,
-            role: p.role ?? 'spieler',
-            display_name: p.display_name ?? null,
+            role: ad.has(u.id) || ac.get(u.id)?.role === 'admin' ? 'gamemaster' : 'spieler',
+            global_admin: ad.has(u.id),
+            display_name: o.display_name ?? null,
             player_name: p.player_name ?? null,
-            age: p.age ?? null,
-            birthday: p.birthday ?? null,
+            birthday: o.birthday ?? null,
             visible: p.visible ?? true,
             share_questlog: !!p.share_questlog,
             starthilfe: !!p.starthilfe,
@@ -85,52 +112,65 @@ async function listAccounts() {
     }).sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
-async function createAccount(b: Record<string, unknown>) {
-    const email = validEmail(b.email), password = validPassword(b.password), role = validRole(b.role ?? 'spieler');
+// Neues Konto anlegen oder, wenn es die E-Mail schon gibt (z. B. aus TravelBase), dem Konto Questlog-Zugang geben
+async function createAccount(meIsAdmin: boolean, b: Record<string, unknown>) {
+    const email = validEmail(b.email), role = validRole(b.role ?? 'spieler');
     const display_name = text(b.display_name, 40) || null;
-    const { user } = check(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name } }));
-    // Das Profil legt der Datenbank-Trigger an; hier nur noch Rolle und Name sicher setzen
-    check(await admin.from('profiles').upsert({ id: user!.id, role, display_name }));
-    return { id: user!.id };
-}
-
-async function updateAccount(meId: string, b: Record<string, unknown>) {
-    const id = text(b.id, 64);
-    if (!id) throw new Fail('Konto fehlt.');
-    const auth: Record<string, unknown> = {};
-    if (b.email !== undefined) { auth.email = validEmail(b.email); auth.email_confirm = true; }
-    if (b.password) auth.password = validPassword(b.password);
-    const profile: Record<string, unknown> = {};
-    if (b.role !== undefined) {
-        profile.role = validRole(b.role);
-        if (id === meId && profile.role !== 'gamemaster') throw new Fail('Du kannst dir die Gamemaster-Rolle nicht selbst nehmen.');
+    let id = (await allUsers()).find((u) => (u.email ?? '').toLowerCase() === email)?.id as string | undefined;
+    if (!id) {
+        const password = validPassword(b.password);
+        const { user } = check(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name } }));
+        id = user!.id;
+        // Das globale Profil legt der Datenbank-Trigger an; den Namen hier sicher setzen
+        if (display_name) check(await admin.from('overall_profiles').update({ display_name }).eq('id', id));
+    } else if (role === 'gamemaster' && !meIsAdmin) {
+        throw new Fail('Bestehende Konten zum Gamemaster machen dürfen nur Admins.');
     }
-    if (b.display_name !== undefined) profile.display_name = text(b.display_name, 40) || null;
-    if (b.player_name !== undefined) profile.player_name = text(b.player_name, 40) || null;
-    if (b.age !== undefined) {
-        const age = b.age === null || b.age === '' ? null : Number(b.age);
-        if (age !== null && !(Number.isInteger(age) && age >= 1 && age <= 130)) throw new Fail('Das Alter muss zwischen 1 und 130 liegen.');
-        profile.age = age;
-    }
-    if (b.birthday !== undefined) {
-        const d = b.birthday === null || b.birthday === '' ? null : String(b.birthday);
-        if (d !== null && !(/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '1900-01-01' && d <= new Date().toISOString().slice(0, 10))) throw new Fail('Das Geburtsdatum ist ungültig.');
-        profile.birthday = d;
-    }
-    if (Object.keys(auth).length) check(await admin.auth.admin.updateUserById(id, auth));
-    if (Object.keys(profile).length) check(await admin.from('profiles').update(profile).eq('id', id));
+    // Zugang zur App; der Spielstand entsteht per Datenbank-Trigger
+    check(await admin.from('overall_app_access').upsert({ user_id: id, app_id: APP, role: toAppRole(role) }));
     return { id };
 }
 
-async function deleteAccount(meId: string, b: Record<string, unknown>) {
+async function updateAccount(meId: string, meIsAdmin: boolean, b: Record<string, unknown>) {
     const id = text(b.id, 64);
     if (!id) throw new Fail('Konto fehlt.');
-    if (id === meId) throw new Fail('Dein eigenes Konto kannst du hier nicht löschen.');
-    // Profilbilder im Ordner <id>/ mitlöschen, sonst bleiben sie im Speicher liegen
-    // (Fehler hier ignorieren, z. B. wenn es den Bucket noch nicht gibt)
-    const { data: files } = await admin.storage.from('avatars').list(id, { limit: 1000 });
-    if (files?.length) await admin.storage.from('avatars').remove(files.map((f) => `${id}/${f.name}`));
-    check(await admin.auth.admin.deleteUser(id));
+    if (!(await appRole(id))) throw new Fail('Dieses Konto hat keinen Questlog-Zugang.');
+    const auth: Record<string, unknown> = {};
+    if (b.email !== undefined) { auth.email = validEmail(b.email); auth.email_confirm = true; }
+    if (b.password) auth.password = validPassword(b.password);
+    if (Object.keys(auth).length && !meIsAdmin && id !== meId)
+        throw new Fail('E-Mail und Passwort gelten für alle Apps und können nur von Admins geändert werden.');
+    const global: Record<string, unknown> = {}, game: Record<string, unknown> = {};
+    let access: string | null = null;
+    if (b.role !== undefined) {
+        const role = validRole(b.role);
+        if (id === meId && role !== 'gamemaster') throw new Fail('Du kannst dir die Gamemaster-Rolle nicht selbst nehmen.');
+        if (await isGlobalAdmin(id)) {
+            if (role !== 'gamemaster') throw new Fail('Globale Admins sind immer Gamemaster.');
+        } else access = toAppRole(role);
+    }
+    if (b.display_name !== undefined) global.display_name = text(b.display_name, 40) || null;
+    if (b.player_name !== undefined) game.player_name = text(b.player_name, 40) || null;
+    if (b.birthday !== undefined) {
+        const d = b.birthday === null || b.birthday === '' ? null : String(b.birthday);
+        if (d !== null && !(/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '1900-01-01' && d <= new Date().toISOString().slice(0, 10))) throw new Fail('Das Geburtsdatum ist ungültig.');
+        global.birthday = d;
+    }
+    if (Object.keys(auth).length) check(await admin.auth.admin.updateUserById(id, auth));
+    if (Object.keys(global).length) check(await admin.from('overall_profiles').update(global).eq('id', id));
+    if (Object.keys(game).length) check(await admin.from('questlog_players').update(game).eq('id', id));
+    if (access) check(await admin.from('overall_app_access').upsert({ user_id: id, app_id: APP, role: access }));
+    return { id };
+}
+
+// Aus dem Questlog entfernen: Zugang und Spielstand weg, das Konto bleibt für die anderen Apps
+async function removePlayer(meId: string, b: Record<string, unknown>) {
+    const id = text(b.id, 64);
+    if (!id) throw new Fail('Konto fehlt.');
+    if (id === meId) throw new Fail('Dich selbst kannst du hier nicht entfernen.');
+    if (await isGlobalAdmin(id)) throw new Fail('Globale Admins können nicht aus dem Questlog entfernt werden.');
+    check(await admin.from('overall_app_access').delete().eq('user_id', id).eq('app_id', APP));
+    check(await admin.from('questlog_players').delete().eq('id', id));
     return { id };
 }
 
@@ -142,15 +182,15 @@ Deno.serve(async (req) => {
         const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
         const { data: { user } } = await admin.auth.getUser(token);
         if (!user) throw new Fail('Bitte zuerst anmelden.', 401);
-        const me = check(await admin.from('profiles').select('role').eq('id', user.id).maybeSingle());
-        if (me?.role !== 'gamemaster') throw new Fail('Dieser Bereich ist nur für den Gamemaster.', 403);
+        if ((await appRole(user.id)) !== 'admin') throw new Fail('Dieser Bereich ist nur für den Gamemaster.', 403);
+        const meIsAdmin = await isGlobalAdmin(user.id);
 
         const body = await req.json().catch(() => ({}));
         switch (body.action) {
             case 'list': return json({ me: user.id, users: await listAccounts() });
-            case 'create': return json(await createAccount(body));
-            case 'update': return json(await updateAccount(user.id, body));
-            case 'delete': return json(await deleteAccount(user.id, body));
+            case 'create': return json(await createAccount(meIsAdmin, body));
+            case 'update': return json(await updateAccount(user.id, meIsAdmin, body));
+            case 'delete': return json(await removePlayer(user.id, body));
             default: throw new Fail('Unbekannte Aktion.');
         }
     } catch (e) {

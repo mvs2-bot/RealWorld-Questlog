@@ -63,7 +63,7 @@
     <section id="viewAdmin" hidden>
         <div class="box">
             <h2>➕ Neues Konto anlegen</h2>
-            <p class="note">Das Konto ist sofort aktiv, eine Bestätigungs-Mail wird nicht verschickt. Gib das Passwort selbst an die Person weiter.</p>
+            <p class="note">Das Konto ist sofort aktiv, eine Bestätigungs-Mail wird nicht verschickt. Gib das Passwort selbst an die Person weiter. Gibt es die E-Mail schon (z. B. aus TravelBase), bekommt dieses Konto nur Zugang zum Questlog und behält sein Passwort.</p>
             <form id="createForm">
                 <div class="grid3">
                     <label>Anzeigename<input type="text" id="newName" maxlength="40" autocomplete="off"></label>
@@ -165,7 +165,7 @@
                         <div class="form-actions">
                             <button class="btn" type="submit">Speichern</button>
                             <a class="btn-ghost" href="./#questlog/${esc(u.id)}" title="Quests abschließen, wieder öffnen, Datum und Kommentar ändern">📜 Questlog öffnen</a>
-                            ${self ? '' : '<button class="btn-danger" type="button" data-del>🗑️ Konto löschen</button>'}
+                            ${self || u.global_admin ? '' : '<button class="btn-danger" type="button" data-del>🗑️ Aus dem Questlog entfernen</button>'}
                         </div>
                         <div class="msg" hidden></div>
                     </form>
@@ -200,8 +200,8 @@
     $('#userList').addEventListener('click', async e => {
         if (!e.target.closest('[data-del]')) return;
         const f = e.target.closest('form'), u = users.find(x => x.id === f.dataset.id);
-        if (!confirm(`Konto ${u.email} wirklich löschen?\n\nDer gesamte Spielstand geht dabei verloren.`)) return;
-        try { await RQ.gm('delete', { id: u.id }); await load(); msg($('#usersMsg'), `🗑️ ${u.email} wurde gelöscht.`, true); }
+        if (!confirm(`${u.email} wirklich aus dem Questlog entfernen?\n\nDer gesamte Spielstand geht dabei verloren. Das Konto selbst bleibt für die anderen Apps bestehen.`)) return;
+        try { await RQ.gm('delete', { id: u.id }); await load(); msg($('#usersMsg'), `🗑️ ${u.email} wurde aus dem Questlog entfernt.`, true); }
         catch (err) { msg(f.querySelector('.msg'), RQ.errorText(err)); }
     });
 
@@ -225,9 +225,9 @@
         if (!session) return deny('Bitte melde dich zuerst im Questlog an.');
         show($('#logoutBtn'));
         try {
-            const p = await RQ.sb.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
-            if (p.error) throw p.error;
-            if (!p.data || p.data.role !== 'gamemaster') return deny('Dieser Bereich ist nur für den Gamemaster.');
+            const gm = await RQ.sb.rpc('questlog_is_gamemaster');
+            if (gm.error) throw gm.error;
+            if (gm.data !== true) return deny('Dieser Bereich ist nur für den Gamemaster.');
         } catch (err) { return deny(RQ.errorText(err)); }
         show($('#viewAdmin'));
         load();
