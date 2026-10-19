@@ -206,38 +206,6 @@
         return Object.fromEntries(paths.filter(p => signed[p]).map(p => [p, signed[p].url]));
     }
 
-    /* Foto quadratisch zuschneiden und auf max. 400 px verkleinern (JPEG), wie bei TravelBase */
-    async function shrink(file) {
-        const url = URL.createObjectURL(file);
-        try {
-            const img = await new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => fail(new Error('Das Bild konnte nicht gelesen werden. Bitte ein JPG oder PNG wählen.')); i.src = url; });
-            const s = Math.min(img.naturalWidth, img.naturalHeight), size = Math.min(400, s);
-            const c = document.createElement('canvas'); c.width = c.height = size;
-            c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, size, size);
-            return await new Promise((ok, fail) => c.toBlob(b => b ? ok(b) : fail(new Error('Das Bild konnte nicht verarbeitet werden.')), 'image/jpeg', 0.85));
-        } finally { URL.revokeObjectURL(url); }
-    }
-
-    /* Neues Profilbild hochladen; gibt das geänderte Profil zurück. Das alte Bild wird danach gelöscht. */
-    async function uploadAvatar(file, oldPath) {
-        needSb();
-        const session = await getSession();
-        const blob = await shrink(file);
-        const path = `${session.user.id}/avatar-${Date.now()}.jpg`;
-        check(await sb.storage.from(AVATARS).upload(path, blob, { contentType: 'image/jpeg' }));
-        let profile;
-        try { profile = await saveProfile({ avatar_url: path }); }
-        catch (e) { sb.storage.from(AVATARS).remove([path]).catch(() => {}); throw e; }
-        if (oldPath) sb.storage.from(AVATARS).remove([oldPath]).catch(() => {});
-        return profile;
-    }
-
-    async function removeAvatar(oldPath) {
-        const profile = await saveProfile({ avatar_url: null });
-        if (oldPath) sb.storage.from(AVATARS).remove([oldPath]).catch(() => {});
-        return profile;
-    }
-
     /* ───────── Start-Dashboard ───────── */
 
     /* Mitspieler (inkl. einem selbst) als Scoreboard sortiert + letzte Quest-Abschlüsse.
@@ -279,6 +247,6 @@
 
     window.RQ = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicStats, loadGame, saveProfile, startGame,
         completeQuest, undoQuest, updateQuest, loadPlayerLog, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, gm,
-        today, ageFrom, avatarUrls, uploadAvatar, removeAvatar, loadDashboard,
+        today, ageFrom, avatarUrls, loadDashboard,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
