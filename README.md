@@ -44,11 +44,14 @@ Projekts `realworld-questlog`.
 
 Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und **👤 Konto**.
 
-- **Start**: eigenes Level mit Titel-Fortschritt und nächster Quest (direkt abhakbar), die Mitspieler,
+- **Start**: eigenes Level mit Titel-Fortschritt und einer hervorgehobenen Quest (direkt abhakbar): im Hardcore Mode
+  die feste nächste Quest, sonst eine täglich wechselnde „Inspiration des Tages“. Dazu die Mitspieler,
   ein Scoreboard (Level, Titel, zuletzt abgeschlossene Quest), die letzten Quest-Abschlüsse der Gruppe,
   Gruppen-Zahlen (Quests gesamt, diese Woche, Wochen-Champion) und ein Hinweis, wenn jemand Geburtstag hat.
 - **Questlog**: alle 100 Quests mit Emoji wie im Buch. Bei abgeschlossenen Quests lassen sich das
   Abschlussdatum (nicht in der Zukunft, nicht vor Spielbeginn) und ein Kommentar nachträglich ändern.
+  Eine Such- und Filterleiste findet Quests in Echtzeit nach Text (Titel, Beschreibung, Kommentar, Level),
+  Status (offen, verfügbar, erledigt, mit Kommentar) und Phase.
 - **Konto**: Spielername (nur im Questlog) und drei Schalter. Profilbild, Anzeigename, Geburtsdatum, Geschlecht,
   Größe, Gewicht und Passwort bearbeitet man über „Kontoeinstellungen“ im gemeinsamen Konto-Modul; sie gelten
   für alle Apps. Die Schalter:
