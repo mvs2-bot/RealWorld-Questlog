@@ -13,7 +13,7 @@ in Supabase (Core-Projekt `travelbase`, Tabellen `questlog_*`) und werden erst n
 
 ```
 index.html               Login, Spielstart, Start-Dashboard, Questlog und Kontobereich
-gamemaster.html          Gamemaster-Bereich: Spieler:innen anlegen, ansehen, ändern, entfernen
+gamemaster.html          Weiterleitung auf die gemeinsamen Admin-Einstellungen im Dashboard (/admin.html, Bereich Quest Log)
 shared/style.css         gemeinsames Aussehen beider Seiten
 shared/config.js         Supabase-URL + Publishable Key (dürfen öffentlich sein)
 shared/questlog.js       Konten, Spielstand laden/speichern, Offline-Zwischenspeicher
@@ -38,7 +38,7 @@ Projekts `realworld-questlog`.
 3. Unter Edge Functions die Funktion `gamemaster` mit dem Inhalt von `supabase/functions/gamemaster/index.ts`
    anlegen und in ihren Einstellungen „Verify JWT“ ausschalten (die Funktion prüft die Anmeldung selbst).
 4. Zugang gibt es über `overall_app_access` (App `questlog`): Rolle `admin` = Gamemaster, `member` = Spieler:in.
-   Globale Admins sind automatisch Gamemaster. Weitere Spieler:innen legt der Gamemaster auf `gamemaster.html` an.
+   Globale Admins sind automatisch Gamemaster. Weitere Spieler:innen legt der Gamemaster in den Admin-Einstellungen im Dashboard (`/admin.html`) an.
 
 ## Start-Dashboard und Kontobereich
 
@@ -56,7 +56,7 @@ Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und 
   Größe, Gewicht und Passwort bearbeitet man über „Kontoeinstellungen“ im gemeinsamen Konto-Modul; sie gelten
   für alle Apps. Die Schalter:
   - *Für Mitspieler sichtbar*: aus = man fehlt bei allen anderen in Dashboard, Scoreboard und Aktivität,
-    auch bei Gamemastern. Die Kontenverwaltung auf `gamemaster.html` listet weiterhin alle Konten.
+    auch bei Gamemastern. Die Kontenverwaltung in den Admin-Einstellungen listet weiterhin alle Konten.
   - *Profilbild für Mitspieler sichtbar*: aus = die anderen sehen nur die Initialen.
   - *Questlog für Mitspieler freigeben*: an = Mitspieler können einen auf der Startseite anklicken und das
     Questlog ansehen (nur lesen, ohne die privaten Notizen).
