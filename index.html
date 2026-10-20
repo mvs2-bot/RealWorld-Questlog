@@ -33,7 +33,7 @@
             <div class="me-wrap">
                 <button id="meBtn" class="icon-btn me-btn" type="button" aria-label="Mein Konto" title="Mein Konto" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu" hidden>👤</button>
                 <div id="meMenu" class="me-menu" role="menu" hidden>
-                    <div class="me-head"><span id="menuAva" class="ava"></span><div><b id="menuName"></b><small id="menuEmail"></small></div></div>
+                    <div class="me-head"><span id="menuAva" class="ava"></span><div><b id="menuName"></b></div></div>
                     <a id="menuKonto" class="me-item" href="#konto" role="menuitem">⚙️ Kontoeinstellungen</a>
                     <a id="gmBtn" class="me-item" href="gamemaster.html" role="menuitem" hidden>🛡️ Gamemaster-Bereich</a>
                     <button id="logoutBtn" class="me-item danger" type="button" role="menuitem">🚪 Abmelden</button>
@@ -240,13 +240,28 @@
             <div class="titles" id="titleList"></div>
         </div>
 
+        <div class="box qfilter" id="questFilter" role="search">
+            <input type="search" id="qSearch" placeholder="🔍 Quests durchsuchen (Titel, Beschreibung, Kommentar, Level)" aria-label="Quests durchsuchen" autocomplete="off">
+            <div class="qfilter-row">
+                <div class="chips" id="qTags" role="group" aria-label="Nach Status filtern">
+                    <button class="chip tag on" type="button" data-tag="all" aria-pressed="true">Alle</button>
+                    <button class="chip tag" type="button" data-tag="open" aria-pressed="false">⬜ Offen</button>
+                    <button class="chip tag" type="button" data-tag="available" aria-pressed="false">🔓 Verfügbar</button>
+                    <button class="chip tag" type="button" data-tag="done" aria-pressed="false">✅ Erledigt</button>
+                    <button class="chip tag" type="button" data-tag="note" aria-pressed="false">💬 Mit Kommentar</button>
+                </div>
+                <select id="qPhase" aria-label="Nach Phase filtern"><option value="">Alle Phasen</option></select>
+            </div>
+            <div class="qfilter-info" id="qInfo" hidden></div>
+        </div>
+
         <div id="phaseList"></div>
         <div id="gameMsg" class="msg" hidden></div>
 
         <div class="box" id="notesBox" style="margin-top:20px">
             <h2>📝 Gedanken & Notizen</h2>
             <p class="note">Wird automatisch gespeichert, wenn du das Feld verlässt.</p>
-            <textarea id="notes" aria-label="Gedanken und Notizen"></textarea>
+            <textarea id="notes" rows="12" aria-label="Gedanken und Notizen" placeholder="Was nimmst du dir vor? Was hast du erlebt? Ideen für die nächsten Quests …"></textarea>
             <div id="notesMsg" class="msg" hidden></div>
         </div>
     </section>
@@ -389,7 +404,7 @@
     /* Fremdes Questlog laden (#questlog/<konto-id>) */
     async function renderOther(id) {
         only('#viewGame'); show($('#meBtn')); showGm(); show($('#offlineHint'), false);
-        ['#legendBox', '#notesBox'].forEach(s => show($(s), false));
+        ['#legendBox', '#notesBox', '#questFilter'].forEach(s => show($(s), false));
         show($('#viewingBox'), false);
         $('#phaseList').innerHTML = '<div class="box"><p class="note" style="margin:0">⏳ Questlog wird geladen …</p></div>';
         let r;
@@ -428,9 +443,9 @@
             p.hardcore ? '<span class="chip hard">💀 Hardcore Mode</span>' : '',
             p.starthilfe ? '<span class="chip">🤝 Starthilfe</span>' : ''
         ].join('');
-        const next = game.quests.find(q => !isDone(q.level) && !lockReason(q.level));
+        const next = featuredQuest();
         show($('#nextQuest'), !!next);
-        if (next) $('#nextQuest').innerHTML = `🎯 <b>Nächste Quest: Level ${next.level} · ${qLabel(next)}</b><br>${esc(next.description)}`;
+        if (next) $('#nextQuest').innerHTML = `${featuredHead(next)}<br>${esc(next.q.description)}`;
         show($('#legendBox'), isDone(100));
 
         $('#titleList').innerHTML = game.phases.map(ph => {
@@ -438,23 +453,82 @@
             return `<div class="title-item${on ? ' on' : ''}">${on ? '🏅' : '🔒'} ${esc(ph.reward_title)}</div>`;
         }).join('');
 
-        const openIds = new Set([...document.querySelectorAll('details.phase[open]')].map(d => +d.dataset.id));
-        const firstOpen = (game.phases.find(ph => !phaseDone(ph)) || game.phases[0] || {}).id;
-        $('#phaseList').innerHTML = game.phases.map(ph => {
-            const qs = game.quests.filter(q => q.phase_id === ph.id);
-            const d = qs.filter(q => isDone(q.level)).length, all = d === qs.length;
-            const open = openIds.size ? openIds.has(ph.id) : ph.id === firstOpen;
-            return `<details class="phase" data-id="${ph.id}"${open ? ' open' : ''}>
-                <summary><div><div class="ph-title">${esc(ph.title)}</div><div class="ph-sub">${esc(ph.subtitle)}</div></div>
-                    <div class="ph-count${all ? ' done' : ''}">${all ? '✅ ' : ''}${d}/${qs.length}</div></summary>
-                <div class="ph-body">
-                    <p class="ph-meta">🧭 <b>Expeditions-Ziel:</b> ${esc(ph.goal)}<br>🎁 <b>Belohnung:</b> ${esc(ph.reward_title)}</p>
-                    ${qs.map(questRow).join('')}
-                    <div class="milestone${all ? ' on' : ''}">${all ? '🎁 MEILENSTEIN ERREICHT' : '⬜ Meilenstein noch offen'}</div>
-                </div></details>`;
-        }).join('');
+        show($('#questFilter'));
+        renderPhases();
         if (!cur.other) $('#notes').value = p.notes || '';
     }
+
+    /* Hardcore: die feste nächste Quest. Sonst: eine pro Tag (und Spieler) zufällig gewählte offene Quest. */
+    function featuredQuest() {
+        const avail = game.quests.filter(q => !isDone(q.level) && !lockReason(q.level));
+        if (!avail.length) return null;
+        if (cur.profile.hardcore) return { q: avail[0], daily: false };
+        let h = 0; for (const c of RQ.today() + cur.profile.id) h = (h * 31 + c.codePointAt(0)) >>> 0;
+        return { q: avail[h % avail.length], daily: true };
+    }
+    const featuredHead = f => f.daily ? `✨ <b>Inspiration des Tages: Level ${f.q.level} · ${qLabel(f.q)}</b>`
+                                      : `🎯 <b>Nächste Quest: Level ${f.q.level} · ${qLabel(f.q)}</b>`;
+
+    /* Suche und Filter im Questlog */
+    const filter = { text: '', tag: 'all', phase: 0 };
+    let openBeforeFilter = null;   /* aufgeklappte Phasen vor dem Filtern, kommen danach zurück */
+    const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const filtering = () => !!(filter.text || filter.tag !== 'all' || filter.phase);
+    function questMatches(q) {
+        const pr = cur.progress[q.level];
+        if (filter.phase && q.phase_id !== filter.phase) return false;
+        if (filter.tag === 'open' && pr) return false;
+        if (filter.tag === 'available' && (pr || lockReason(q.level))) return false;
+        if (filter.tag === 'done' && !pr) return false;
+        if (filter.tag === 'note' && !(pr && pr.note)) return false;
+        if (!filter.text) return true;
+        const hay = norm([q.level, q.name, q.description, q.emoji, pr && pr.note].join(' '));
+        return norm(filter.text).split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+    }
+    function renderPhases() {
+        const domOpen = new Set([...document.querySelectorAll('details.phase[open]')].map(d => +d.dataset.id));
+        const on = filtering();
+        if (on && !openBeforeFilter) openBeforeFilter = domOpen;
+        const openIds = on ? domOpen : (openBeforeFilter || domOpen);
+        if (!on) openBeforeFilter = null;
+        const firstOpen = (game.phases.find(ph => !phaseDone(ph)) || game.phases[0] || {}).id;
+        let hits = 0;
+        $('#phaseList').innerHTML = game.phases.map(ph => {
+            const qs = game.quests.filter(q => q.phase_id === ph.id);
+            const shown = on ? qs.filter(questMatches) : qs;
+            if (on && !shown.length) return '';
+            hits += shown.length;
+            const d = qs.filter(q => isDone(q.level)).length, all = d === qs.length;
+            const open = on || (openIds.size ? openIds.has(ph.id) : ph.id === firstOpen);
+            return `<details class="phase" data-id="${ph.id}"${open ? ' open' : ''}>
+                <summary><div><div class="ph-title">${esc(ph.title)}</div><div class="ph-sub">${esc(ph.subtitle)}</div></div>
+                    <div class="ph-count${all ? ' done' : ''}">${on ? `${shown.length} Treffer · ` : ''}${all ? '✅ ' : ''}${d}/${qs.length}</div></summary>
+                <div class="ph-body">
+                    <p class="ph-meta">🧭 <b>Expeditions-Ziel:</b> ${esc(ph.goal)}<br>🎁 <b>Belohnung:</b> ${esc(ph.reward_title)}</p>
+                    ${shown.map(questRow).join('')}
+                    ${on ? '' : `<div class="milestone${all ? ' on' : ''}">${all ? '🎁 MEILENSTEIN ERREICHT' : '⬜ Meilenstein noch offen'}</div>`}
+                </div></details>`;
+        }).join('');
+        show($('#qInfo'), on);
+        if (on) $('#qInfo').innerHTML = hits
+            ? `${hits} ${hits === 1 ? 'Quest gefunden' : 'Quests gefunden'} · <button class="link-btn" type="button" id="qReset">Filter zurücksetzen</button>`
+            : `Keine Quest passt zu deiner Suche. <button class="link-btn" type="button" id="qReset">Filter zurücksetzen</button>`;
+        const sel = $('#qPhase');
+        if (sel.options.length !== game.phases.length + 1)
+            sel.innerHTML = '<option value="">Alle Phasen</option>' + game.phases.map(ph => `<option value="${ph.id}">${esc(ph.title)}</option>`).join('');
+        sel.value = filter.phase ? String(filter.phase) : '';
+    }
+    function setTag(tag) {
+        filter.tag = tag;
+        document.querySelectorAll('#qTags .tag').forEach(b => { const a = b.dataset.tag === tag; b.classList.toggle('on', a); b.setAttribute('aria-pressed', a); });
+    }
+    $('#qSearch').oninput = () => { filter.text = $('#qSearch').value.trim(); editing = null; renderPhases(); };
+    $('#qTags').onclick = e => { const b = e.target.closest('.tag'); if (!b) return; setTag(filter.tag === b.dataset.tag ? 'all' : b.dataset.tag); editing = null; renderPhases(); };
+    $('#qPhase').onchange = () => { filter.phase = +$('#qPhase').value || 0; editing = null; renderPhases(); };
+    $('#qInfo').onclick = e => {
+        if (!e.target.closest('#qReset')) return;
+        filter.text = ''; filter.phase = 0; $('#qSearch').value = ''; setTag('all'); renderPhases(); $('#qSearch').focus();
+    };
     function questRow(q) {
         const pr = cur.progress[q.level], lock = lockReason(q.level), canEdit = editable();
         const label = pr ? `Level ${q.level} als offen markieren` : `Level ${q.level} abschließen`;
@@ -549,7 +623,7 @@
         const b = $('#meBtn');
         b.classList.toggle('has-photo', !!myAvatar);
         b.innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : '👤';
-        $('#menuName').textContent = myName(); $('#menuEmail').textContent = (game && game.email) || '';
+        $('#menuName').textContent = myName();
         ['#dashAva', '#accAva', '#menuAva'].forEach(s => { $(s).innerHTML = avaHtml(myName(), myAvatar); });
     }
 
@@ -577,10 +651,10 @@
             p.hardcore ? '<span class="chip hard">💀 Hardcore Mode</span>' : '',
             p.visible === false ? '<a class="chip" href="#konto">👻 Für Mitspieler ausgeblendet</a>' : ''
         ].join('');
-        const next = game.quests.find(q => !isDone(q.level) && !lockReason(q.level));
+        const next = featuredQuest();
         show($('#dashNext'), !!next);
-        if (next) $('#dashNext').innerHTML = `<div>🎯 <b>Nächste Quest: Level ${next.level} · ${qLabel(next)}</b><br>${esc(next.description)}</div>
-            <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.level}">✅ Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog →</a></div>`;
+        if (next) $('#dashNext').innerHTML = `<div>${featuredHead(next)}<br>${esc(next.q.description)}</div>
+            <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.q.level}">✅ Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog →</a></div>`;
         if (isDone(100)) { show($('#dashNext')); $('#dashNext').innerHTML = '🏆 <b>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</b><br>Alle 100 Quests abgeschlossen. New Game Plus kann starten.'; }
     }
 
@@ -752,8 +826,8 @@
         const session = await RQ.getSession();
         if (!session) return renderLoggedOut();
         try { game = await RQ.loadGame(); }
-        catch (e) { only('#viewGame'); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
-        if (!game.quests.length) { only('#viewGame'); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
+        catch (e) { only('#viewGame'); show($('#questFilter'), false); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
+        if (!game.quests.length) { only('#viewGame'); show($('#questFilter'), false); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
         show($('#menuKonto'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar();
         return game.profile && game.profile.game_started_at ? showTab() : renderSetup();
     }

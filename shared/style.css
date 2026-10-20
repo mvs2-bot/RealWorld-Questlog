@@ -122,6 +122,18 @@ details.phase > summary::-webkit-details-marker { display: none; }
 .qedit label { max-width: 100%; }
 .qedit input[type=date] { align-self: flex-start; }
 .qedit textarea { min-height: 70px; }
+#notes { display: block; width: 100%; min-height: 320px; padding: 14px 16px; font-size: 1rem; line-height: 1.6; }
+.qfilter { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; }
+.qfilter input[type=search] { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; font-size: 16px; color: var(--ink); }
+.qfilter input[type=search]:focus { border-color: var(--p1-line); outline: 3px solid rgba(109,40,217,.15); }
+.qfilter-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.qfilter select { padding: 7px 10px; font-size: .85rem; }
+.chip.tag { cursor: pointer; font-size: .78rem; padding: 5px 12px; }
+.chip.tag:hover { border-color: var(--p1); }
+.chip.tag.on { background: var(--p1); border-color: var(--p1); color: #fff; }
+:root[data-theme="dark"] .chip.tag.on { color: #1e1035; }
+.qfilter-info { font-size: .84rem; font-weight: 700; color: var(--mute); }
+.qfilter-info .link-btn { margin-left: 4px; }
 .qedit-actions { display: flex; gap: 14px; align-items: center; }
 .readonly .qbox:disabled { cursor: default; opacity: 1; }
 .readonly .quest.locked .qbox:disabled { opacity: .55; }
@@ -156,7 +168,6 @@ details.phase > summary::-webkit-details-marker { display: none; }
 .me-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 12px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
 .me-head > div { min-width: 0; }
 .me-head b { display: block; color: var(--ink); font-size: .95rem; }
-.me-head small { display: block; color: var(--mute); font-size: .78rem; word-break: break-all; }
 .me-item { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 8px; padding: 10px 12px; font-size: .92rem; font-weight: 700; color: var(--ink); text-align: left; text-decoration: none; }
 .me-item:hover, .me-item:focus-visible { background: var(--hover); outline: none; }
 .me-item.danger { color: var(--danger); }
