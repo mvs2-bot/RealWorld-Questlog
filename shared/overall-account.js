@@ -8,6 +8,9 @@
    Benutzung (supabase-js muss schon geladen sein):
      OverallAccount.openSettings({ sb, onChange })   Kontoeinstellungen als Dialog
      OverallAccount.openPassword({ sb, redirectTo }) Passwort ändern / Link per E-Mail
+     OverallAccount.mountSettings(el, { sb, onChange })   dasselbe direkt in ein Element (Kontoseite)
+     OverallAccount.mountPassword(el, { sb, redirectTo }) dasselbe direkt in ein Element
+     OverallAccount.mountEmail(el, { sb, redirectTo })    E-Mail-Adresse ändern (mit Bestätigungslink)
      OverallAccount.loadPhoto(sb, path)              Profilbild als data:-URL (für Kopfzeilen)
    onChange(profile) wird nach jedem Speichern mit dem neuen Profil aufgerufen.
    Aussehen über die CSS-Variablen der Seite (--card, --line, --ink, --text, --mute, --p1, --bg, --hover, --danger). */
@@ -102,18 +105,27 @@
     function closeModal() { if (modal) { modal.remove(); modal = null; } }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    async function openSettings({ sb, onChange } = {}) {
-        const d = openModal('<h2>⚙️ Kontoeinstellungen <button class="oa-close" type="button" aria-label="Schließen">✕</button></h2><p class="oa-note">⏳ Lädt …</p>');
+    /* Im Dialog mit Überschrift und ✕, auf der Kontoseite ohne (die Seite hat eigene Überschriften) */
+    const head = (d, title) => d.classList.contains('oa-inline') ? '' : `<h2>${title} <button class="oa-close" type="button" aria-label="Schließen">✕</button></h2>`;
+    function mount(el) {
+        el.classList.add('oa-dialog', 'oa-inline');
+        return el;
+    }
+
+    const openSettings = (opts = {}) => fillSettings(openModal(''), opts);
+    const mountSettings = (el, opts = {}) => fillSettings(mount(el), opts);
+    async function fillSettings(d, { sb, onChange } = {}) {
+        d.innerHTML = head(d, '⚙️ Kontoeinstellungen') + '<p class="oa-note">⏳ Lädt …</p>';
         let user, profile, photo = null;
         try {
             ({ user, profile } = await loadProfile(sb));
             photo = await loadPhoto(sb, profile.avatar_path).catch(() => null);
         } catch (e) { d.querySelector('.oa-note').textContent = errText(e); return; }
-        if (!modal || modal.querySelector('.oa-dialog') !== d) return;   /* inzwischen geschlossen */
+        if (!d.isConnected) return;   /* inzwischen geschlossen */
 
         const ava = () => photo ? `<img src="${photo}" alt="">` : '👤';
         d.innerHTML = `
-            <h2>⚙️ Kontoeinstellungen <button class="oa-close" type="button" aria-label="Schließen">✕</button></h2>
+            ${head(d, '⚙️ Kontoeinstellungen')}
             <p class="oa-note">Gilt für alle Apps, in denen du dich mit diesem Konto anmeldest.</p>
             <div class="oa-photo">
                 <span class="oa-ava" id="oaAva">${ava()}</span>
@@ -176,11 +188,16 @@
         };
     }
 
-    async function openPassword({ sb, redirectTo } = {}) {
+    async function openPassword(opts = {}) {
+        try { await currentUser(opts.sb); } catch (e) { return; }
+        return fillPassword(openModal(''), opts);
+    }
+    const mountPassword = (el, opts = {}) => fillPassword(mount(el), opts);
+    async function fillPassword(d, { sb, redirectTo } = {}) {
         let user;
-        try { user = await currentUser(sb); } catch (e) { return; }
-        const d = openModal(`
-            <h2>🔑 Passwort <button class="oa-close" type="button" aria-label="Schließen">✕</button></h2>
+        try { user = await currentUser(sb); } catch (e) { d.innerHTML = `<p class="oa-note">${esc(errText(e))}</p>`; return; }
+        d.innerHTML = `
+            ${head(d, '🔑 Passwort')}
             <p class="oa-note">Das Passwort gilt für alle Apps, in denen du dich mit diesem Konto anmeldest.</p>
             <form id="oaPwForm">
                 <input type="email" value="${esc(user.email)}" autocomplete="username" hidden>
@@ -191,7 +208,7 @@
             <hr class="oa-sep">
             <p class="oa-note">Passwort vergessen? Wir schicken dir einen Link an <b>${esc(user.email)}</b>, mit dem du ein neues festlegen kannst.</p>
             <button class="oa-ghost" type="button" id="oaReset">📧 Link per E-Mail senden</button>
-            <div class="oa-msg" id="oaMsg" hidden></div>`);
+            <div class="oa-msg" id="oaMsg" hidden></div>`;
         const $ = s => d.querySelector(s), out = $('#oaMsg');
         $('#oaPwForm').onsubmit = async e => {
             e.preventDefault();
@@ -207,6 +224,35 @@
                 check(await sb.auth.resetPasswordForEmail(user.email, { redirectTo: redirectTo || location.origin + location.pathname.replace(/[^/]*$/, '') }));
                 msg(out, '📧 Link ist unterwegs. Falls nichts ankommt: bitte im Spam-Ordner schauen.', true);
             } catch (err) { msg(out, errText(err)); }
+            finally { b.disabled = false; }
+        };
+    }
+
+    /* E-Mail ändern: Supabase schickt einen Bestätigungslink; erst danach gilt die neue Adresse (in allen Apps) */
+    const openEmail = (opts = {}) => fillEmail(openModal(''), opts);
+    const mountEmail = (el, opts = {}) => fillEmail(mount(el), opts);
+    async function fillEmail(d, { sb, redirectTo } = {}) {
+        let user;
+        try { user = await currentUser(sb); } catch (e) { d.innerHTML = `<p class="oa-note">${esc(errText(e))}</p>`; return; }
+        d.innerHTML = `
+            ${head(d, '✉️ E-Mail-Adresse')}
+            <p class="oa-note">Mit dieser Adresse meldest du dich in allen Apps an. Aktuell: <b>${esc(user.email)}</b></p>
+            <form id="oaMailForm">
+                <label>Neue E-Mail-Adresse<input type="email" id="oaMail" autocomplete="email" required></label>
+                <button class="oa-btn" type="submit">Bestätigungslink senden</button>
+            </form>
+            <div class="oa-msg" id="oaMsg" hidden></div>`;
+        const $ = s => d.querySelector(s), out = $('#oaMsg');
+        $('#oaMailForm').onsubmit = async e => {
+            e.preventDefault();
+            const email = $('#oaMail').value.trim().toLowerCase();
+            if (email === String(user.email).toLowerCase()) return msg(out, 'Das ist schon deine aktuelle Adresse.');
+            const b = $('#oaMailForm .oa-btn'); b.disabled = true; msg(out, '');
+            try {
+                check(await sb.auth.updateUser({ email }, { emailRedirectTo: redirectTo || location.href.split('#')[0] }));
+                $('#oaMailForm').reset();
+                msg(out, `📧 Bitte bestätige die Änderung über den Link an ${email}. Bis dahin gilt die alte Adresse.`, true);
+            } catch (err) { msg(out, /already|registered|exists/i.test(String(err && err.message)) ? 'Diese E-Mail-Adresse gehört schon zu einem anderen Konto.' : errText(err)); }
             finally { b.disabled = false; }
         };
     }
@@ -240,8 +286,9 @@
         .oa-msg { font-size: .84rem; font-weight: 600; border-radius: 8px; padding: 8px 12px; margin-top: 12px; background: var(--danger-soft, #fee2e2); color: var(--danger, #b91c1c); }
         .oa-msg.ok { background: var(--ok-soft, #dcfce7); color: var(--ok, #15803d); }
         :root[data-theme="dark"] .oa-msg.ok { background: var(--ok-soft, #14361f); color: var(--ok, #86efac); }
-        .oa-msg[hidden] { display: none !important; }`;
+        .oa-msg[hidden] { display: none !important; }
+        .oa-dialog.oa-inline { max-width: none; max-height: none; overflow: visible; background: none; border: 0; border-radius: 0; padding: 0; box-shadow: none; font-family: inherit; }`;
     document.head.appendChild(css);
 
-    window.OverallAccount = { openSettings, openPassword, loadPhoto, close: closeModal, genderLabel: g => GENDERS[g || ''] };
+    window.OverallAccount = { openSettings, openPassword, openEmail, mountSettings, mountPassword, mountEmail, loadPhoto, close: closeModal, genderLabel: g => GENDERS[g || ''] };
 })();
