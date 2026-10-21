@@ -12,6 +12,8 @@
      OverallAccount.mountPassword(el, { sb, redirectTo }) dasselbe direkt in ein Element
      OverallAccount.mountEmail(el, { sb, redirectTo })    E-Mail-Adresse ändern (mit Bestätigungslink)
      OverallAccount.loadPhoto(sb, path)              Profilbild als data:-URL (für Kopfzeilen)
+     OverallAccount.pwnedCount(password)             wie oft das Passwort in Datenlecks vorkam (0 = nie/offline)
+     OverallAccount.pwnedText(n)                     passende Fehlermeldung dazu
    onChange(profile) wird nach jedem Speichern mit dem neuen Profil aufgerufen.
    Aussehen über die CSS-Variablen der Seite (--card, --line, --ink, --text, --mute, --p1, --bg, --hover, --danger). */
 (function () {
@@ -38,6 +40,21 @@
         return m;
     }
     function msg(el, text, ok) { el.textContent = text; el.className = 'oa-msg' + (ok ? ' ok' : ''); el.hidden = !text; }
+
+    /* Passwort gegen die Datenleck-Liste von HaveIBeenPwned prüfen. Nur die ersten 5 Zeichen des
+       SHA-1-Hashs verlassen den Browser (k-Anonymität), verglichen wird lokal. Ergebnis = wie oft das
+       Passwort in Lecks vorkam; 0 auch, wenn der Dienst nicht erreichbar ist (dann nicht blockieren). */
+    async function pwnedCount(password) {
+        try {
+            const hash = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password));
+            const hex = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+            const res = await fetch('https://api.pwnedpasswords.com/range/' + hex.slice(0, 5), { signal: AbortSignal.timeout(5000) });
+            if (!res.ok) return 0;
+            const line = (await res.text()).split('\n').find(l => l.startsWith(hex.slice(5) + ':'));
+            return line ? parseInt(line.split(':')[1], 10) || 0 : 0;
+        } catch (e) { return 0; }
+    }
+    const pwnedText = n => `Dieses Passwort ist aus Datenlecks bekannt (${n.toLocaleString('de-DE')}× gefunden). Bitte wähle ein anderes.`;
 
     /* ---------- Daten ---------- */
     async function currentUser(sb) {
@@ -214,7 +231,11 @@
             e.preventDefault();
             if ($('#oaPw1').value !== $('#oaPw2').value) return msg(out, 'Die beiden Passwörter sind nicht gleich.');
             const b = $('#oaPwForm .oa-btn'); b.disabled = true; msg(out, '');
-            try { check(await sb.auth.updateUser({ password: $('#oaPw1').value })); $('#oaPwForm').reset(); msg(out, '✅ Passwort geändert.', true); }
+            try {
+                const leaks = await pwnedCount($('#oaPw1').value);
+                if (leaks) return msg(out, pwnedText(leaks));
+                check(await sb.auth.updateUser({ password: $('#oaPw1').value })); $('#oaPwForm').reset(); msg(out, '✅ Passwort geändert.', true);
+            }
             catch (err) { msg(out, errText(err)); }
             finally { b.disabled = false; }
         };
@@ -290,5 +311,5 @@
         .oa-dialog.oa-inline { max-width: none; max-height: none; overflow: visible; background: none; border: 0; border-radius: 0; padding: 0; box-shadow: none; font-family: inherit; }`;
     document.head.appendChild(css);
 
-    window.OverallAccount = { openSettings, openPassword, openEmail, mountSettings, mountPassword, mountEmail, loadPhoto, close: closeModal, genderLabel: g => GENDERS[g || ''] };
+    window.OverallAccount = { openSettings, openPassword, openEmail, mountSettings, mountPassword, mountEmail, loadPhoto, pwnedCount, pwnedText, close: closeModal, genderLabel: g => GENDERS[g || ''] };
 })();
