@@ -159,6 +159,9 @@
     }
 
     async function updatePassword(password) {
+        /* Aus Datenlecks bekannte Passwörter ablehnen (Prüfung im gemeinsamen Konto-Modul) */
+        const leaks = window.OverallAccount ? await OverallAccount.pwnedCount(password) : 0;
+        if (leaks) throw new Error(OverallAccount.pwnedText(leaks));
         const { error } = await sb.auth.updateUser({ password });
         if (error) throw error;
     }
