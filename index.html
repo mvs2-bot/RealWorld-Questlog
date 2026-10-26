@@ -143,25 +143,55 @@
 
         <div id="dashMsg" class="msg" hidden style="margin:-8px 0 20px"></div>
 
-        <div class="box">
-            <h2>👥 Mitspieler</h2>
-            <div class="mates" id="mates"></div>
-        </div>
-
-        <div class="box">
-            <h2>🏆 Scoreboard</h2>
-            <p class="note">Wer ist welches Level? Bei Gleichstand liegt vorn, wer das Level zuerst erreicht hat.</p>
-            <div class="board" id="board"></div>
-        </div>
-
-        <div class="grid2">
-            <div class="box">
-                <h2>⚡ Letzte Aktivität</h2>
-                <div class="feed" id="feed"></div>
+        <div class="secs" id="dashSecs">
+            <div class="box sec" data-sec="mates">
+                <div class="sec-head">
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-mates">👥 Mitspieler<span class="chev" aria-hidden="true"></span></button></h2>
+                    <div class="sec-move">
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Mitspieler nach oben">▲</button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Mitspieler nach unten">▼</button>
+                    </div>
+                </div>
+                <div class="sec-body" id="sec-mates">
+                    <div class="mates" id="mates"></div>
+                </div>
             </div>
-            <div class="box">
-                <h2>📊 Die Gruppe</h2>
-                <div class="stats" id="groupStats"></div>
+            <div class="box sec" data-sec="board">
+                <div class="sec-head">
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-board">🏆 Scoreboard<span class="chev" aria-hidden="true"></span></button></h2>
+                    <div class="sec-move">
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Scoreboard nach oben">▲</button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Scoreboard nach unten">▼</button>
+                    </div>
+                </div>
+                <div class="sec-body" id="sec-board">
+                    <p class="note">Wer ist welches Level? Bei Gleichstand liegt vorn, wer das Level zuerst erreicht hat.</p>
+                    <div class="board" id="board"></div>
+                </div>
+            </div>
+            <div class="box sec half" data-sec="feed">
+                <div class="sec-head">
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-feed">⚡ Letzte Aktivität<span class="chev" aria-hidden="true"></span></button></h2>
+                    <div class="sec-move">
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Letzte Aktivität nach oben">▲</button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Letzte Aktivität nach unten">▼</button>
+                    </div>
+                </div>
+                <div class="sec-body" id="sec-feed">
+                    <div class="feed" id="feed"></div>
+                </div>
+            </div>
+            <div class="box sec half" data-sec="group">
+                <div class="sec-head">
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-group">📊 Die Gruppe<span class="chev" aria-hidden="true"></span></button></h2>
+                    <div class="sec-move">
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Die Gruppe nach oben">▲</button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Die Gruppe nach unten">▼</button>
+                    </div>
+                </div>
+                <div class="sec-body" id="sec-group">
+                    <div class="stats" id="groupStats"></div>
+                </div>
             </div>
         </div>
     </section>
@@ -188,10 +218,14 @@
             <div class="next" id="nextQuest" hidden></div>
         </div>
 
-        <div class="box">
-            <h2>🎖️ Freigeschaltete Titel</h2>
-            <p class="note">Ein Titel wird freigeschaltet, sobald alle Quests einer Phase abgeschlossen sind.</p>
-            <div class="titles" id="titleList"></div>
+        <div class="box sec" data-sec="titles">
+            <div class="sec-head">
+                <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-titles">🎖️ Freigeschaltete Titel <span class="chip" id="titleCount"></span><span class="chev" aria-hidden="true"></span></button></h2>
+            </div>
+            <div class="sec-body" id="sec-titles">
+                <p class="note">Ein Titel wird freigeschaltet, sobald alle Quests einer Phase abgeschlossen sind.</p>
+                <div class="titles" id="titleList"></div>
+            </div>
         </div>
 
         <div class="box qfilter" id="questFilter" role="search">
@@ -271,6 +305,43 @@
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
     $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
+
+    /* ───────── Einklappbare + sortierbare Bereiche (pro Gerät gespeichert) ───────── */
+    const LAYOUT = 'rq_layout_v1';
+    const layout = (() => { try { return JSON.parse(localStorage.getItem(LAYOUT)) || {}; } catch (e) { return {}; } })();
+    layout.closed = layout.closed || {};
+    const saveLayout = () => { try { localStorage.setItem(LAYOUT, JSON.stringify(layout)); } catch (e) {} };
+    function setOpen(box, open) {
+        box.classList.toggle('closed', !open);
+        box.querySelector('.sec-toggle').setAttribute('aria-expanded', open);
+        box.querySelector('.sec-body').hidden = !open;
+    }
+    function updateMoveBtns() {
+        const boxes = [...$('#dashSecs').children];
+        boxes.forEach((b, i) => {
+            b.querySelector('[data-move="-1"]').disabled = i === 0;
+            b.querySelector('[data-move="1"]').disabled = i === boxes.length - 1;
+        });
+    }
+    document.querySelectorAll('.sec').forEach(box => setOpen(box, !layout.closed[box.dataset.sec]));
+    (layout.order || []).forEach(k => { const b = $(`#dashSecs > [data-sec="${k}"]`); if (b) $('#dashSecs').append(b); });
+    updateMoveBtns();
+    document.addEventListener('click', e => {
+        const t = e.target.closest('.sec-toggle, .sec-btn'); if (!t) return;
+        const box = t.closest('.sec');
+        if (t.classList.contains('sec-toggle')) {
+            const open = box.classList.contains('closed');
+            setOpen(box, open);
+            if (open) delete layout.closed[box.dataset.sec]; else layout.closed[box.dataset.sec] = true;
+        } else {
+            const sib = +t.dataset.move < 0 ? box.previousElementSibling : box.nextElementSibling; if (!sib) return;
+            if (+t.dataset.move < 0) sib.before(box); else sib.after(box);
+            layout.order = [...$('#dashSecs').children].map(b => b.dataset.sec);
+            updateMoveBtns();
+            (t.disabled ? box.querySelector('.sec-btn:not(:disabled)') : t).focus();
+        }
+        saveLayout();
+    });
 
     /* ───────── Nicht angemeldet ───────── */
     async function renderLoggedOut() {
@@ -404,6 +475,7 @@
         if (next) $('#nextQuest').innerHTML = `${featuredHead(next)}<br>${esc(next.q.description)}`;
         show($('#legendBox'), isDone(100));
 
+        $('#titleCount').textContent = `${game.phases.filter(phaseDone).length}/${game.phases.length}`;
         $('#titleList').innerHTML = game.phases.map(ph => {
             const on = phaseDone(ph);
             return `<div class="title-item${on ? ' on' : ''}">${on ? '🏅' : '🔒'} ${esc(ph.reward_title)}</div>`;
