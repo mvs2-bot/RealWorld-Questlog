@@ -42,7 +42,7 @@ Projekts `realworld-questlog`.
 
 ## Start-Dashboard und Kontobereich
 
-Nach dem Einloggen gibt es drei Bereiche: **🏠 Start**, **📜 Questlog** und **👤 Konto**.
+Nach dem Einloggen gibt es drei Bereiche: **Start**, **Questlog** und **Konto**.
 
 - **Start**: eigenes Level mit Titel-Fortschritt und einer hervorgehobenen Quest (direkt abhakbar): im Hardcore Mode
   die feste nächste Quest, sonst eine täglich wechselnde „Inspiration des Tages“. Dazu die Mitspieler,
