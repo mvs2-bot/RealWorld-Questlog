@@ -3,7 +3,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#6d28d9">
+    <meta name="theme-color" content="#f2f2f7">
     <script>(function(){try{if((localStorage.getItem('overall-theme')||localStorage.getItem('rq_theme_v2'))==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <title>The Real World – Quest Log</title>
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -12,9 +12,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Quest Log">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <script src="shared/config.js"></script>
     <script src="shared/questlog.js"></script>
@@ -23,32 +20,81 @@
 <script src="shared/ios-nav.js" defer></script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-gamepad" viewBox="0 0 24 24"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 9.83 16h4.34a2 2 0 0 1 1.41.59L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.54-.6-6.58-.69-7.26A4 4 0 0 0 17.32 5z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M15 12h-5M15 8h-5M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-3"/></symbol>
+    <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.9-1"/></symbol>
+    <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.8 7.04L3 21l1.96-6.2A8 8 0 1 1 21 12z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.5 2.9 5.9 6.5.95-4.7 4.6 1.1 6.45L12 17.3l-5.8 3.05 1.1-6.45-4.7-4.6 6.5-.95z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/></symbol>
+    <symbol id="i-skull" viewBox="0 0 24 24"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2M12.5 17l-.5-1-.5 1h1z"/><path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"/></symbol>
+    <symbol id="i-buoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/><path d="M20 3v4M22 5h-4"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+    <symbol id="i-cake" viewBox="0 0 24 24"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1M2 21h20M7 8v3M12 8v3M17 8v3M7 4h.01M12 4h.01M17 4h.01"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M11.56 3.27a.5.5 0 0 1 .88 0l2.95 5.6a1 1 0 0 0 1.52.29L21.18 5.5a.5.5 0 0 1 .8.52l-2.83 10.25a1 1 0 0 1-.96.73H5.81a1 1 0 0 1-.96-.73L2.02 6.02a.5.5 0 0 1 .8-.52l4.27 3.66a1 1 0 0 0 1.52-.29zM5 21h14"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></symbol>
+    <symbol id="i-notes" viewBox="0 0 24 24"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4M2 6h4M2 10h4M2 14h4M2 18h4"/><path d="M21.38 5.63a1 1 0 0 0-3-3l-5 5a2 2 0 0 0-.5.85l-.84 2.87a.5.5 0 0 0 .62.62l2.87-.84a2 2 0 0 0 .85-.5z"/></symbol>
+    <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01M8.5 16.43a5 5 0 0 1 7 0M2 8.82a15 15 0 0 1 4.17-2.65M10.66 5c4.01-.36 8.14.9 11.34 3.76M16.85 11.25a10 10 0 0 1 2.22 1.68M5 13a10 10 0 0 1 5.24-2.76M2 2l20 20"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+</svg>
 <div class="wrap">
     <header class="sticky-header">
-        <div>
-            <h1>🎮 The Real World</h1>
-            <div class="sub">Quest Log · Offline Edition</div>
+        <div class="brand">
+            <span class="logo" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg></span>
+            <div><h1>The Real World</h1><div class="sub">Quest Log · Offline Edition</div></div>
         </div>
         <div class="header-actions">
-            <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+            <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></button>
             <div class="me-wrap">
-                <button id="meBtn" class="icon-btn me-btn" type="button" aria-label="Mein Konto" title="Mein Konto" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu" hidden>👤</button>
+                <button id="meBtn" class="icon-btn me-btn" type="button" aria-label="Mein Konto" title="Mein Konto" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu" hidden><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></button>
                 <div id="meMenu" class="me-menu" role="menu" hidden>
                     <div class="me-head"><span id="menuAva" class="ava"></span><div><b id="menuName"></b></div></div>
-                    <a id="menuKonto" class="me-item" href="/konto.html?from=questlog#app-questlog" role="menuitem">⚙️ Kontoeinstellungen</a>
-                    <a id="gmBtn" class="me-item" href="/admin.html?from=questlog#app-questlog" role="menuitem" hidden>🛡️ Admin-Einstellungen</a>
-                    <button id="logoutBtn" class="me-item danger" type="button" role="menuitem">🚪 Abmelden</button>
+                    <a id="menuKonto" class="me-item" href="/konto.html?from=questlog#app-questlog" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg>Kontoeinstellungen</a>
+                    <a id="gmBtn" class="me-item" href="/admin.html?from=questlog#app-questlog" role="menuitem" hidden><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Admin-Einstellungen</a>
+                    <button id="logoutBtn" class="me-item danger" type="button" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-logout"/></svg>Abmelden</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <div id="setupHint" class="banner" hidden>⚙️ Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</div>
-    <div id="offlineHint" class="banner" hidden>📴 Offline – du siehst den zuletzt geladenen Spielstand.</div>
+    <div id="setupHint" class="banner" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</span></div>
+    <div id="offlineHint" class="banner" hidden><svg class="ic" aria-hidden="true"><use href="#i-wifi-off"/></svg>Offline – du siehst den zuletzt geladenen Spielstand.</div>
 
     <nav class="tabs" id="mainNav" aria-label="Bereiche" hidden>
-        <a href="#start" data-tab="start">🏠 Start</a>
-        <a href="#questlog" data-tab="questlog">📜 Questlog</a>
+        <a href="#start" data-tab="start"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>Start</a>
+        <a href="#questlog" data-tab="questlog"><svg class="ic" aria-hidden="true"><use href="#i-scroll"/></svg>Questlog</a>
     </nav>
 
     <!-- Nicht angemeldet -->
@@ -59,7 +105,7 @@
         </div>
         <div class="grid2">
             <div class="box">
-                <h2>🔑 Anmelden</h2>
+                <h2><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg>Anmelden</h2>
                 <p class="note">Neue Konten legt der Gamemaster an.</p>
                 <form id="loginForm">
                     <label>E-Mail<input type="email" id="loginEmail" autocomplete="username" required></label>
@@ -70,12 +116,12 @@
                 <form id="resetForm" hidden>
                     <label>E-Mail für den Link zum Zurücksetzen<input type="email" id="resetEmail" autocomplete="username" required></label>
                     <button class="btn" type="submit">Link senden</button>
-                    <button class="link-btn" type="button" id="hideReset">← Zurück zur Anmeldung</button>
+                    <button class="link-btn" type="button" id="hideReset"><svg class="ic" aria-hidden="true"><use href="#i-arrow-left"/></svg>Zurück zur Anmeldung</button>
                 </form>
                 <div id="loginMsg" class="msg" hidden></div>
             </div>
             <div class="box">
-                <h2>🌍 Die Welt ist offen</h2>
+                <h2><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg>Die Welt ist offen</h2>
                 <p class="note">Kein Zeitlimit. Kein Zwang. Kein „Game Over“. Du entscheidest, wann du spielst.</p>
                 <div class="stats" id="publicStats"></div>
             </div>
@@ -85,7 +131,7 @@
     <!-- Neues Passwort nach Klick auf den E-Mail-Link -->
     <section id="viewRecovery" hidden>
         <div class="box">
-            <h2>🔑 Neues Passwort festlegen</h2>
+            <h2><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg>Neues Passwort festlegen</h2>
             <p class="note">Bitte gib dein neues Passwort ein (mind. 8 Zeichen).</p>
             <form id="recoveryForm" style="max-width:360px">
                 <label>Neues Passwort<input type="password" id="recoveryPw" autocomplete="new-password" minlength="8" required></label>
@@ -98,7 +144,7 @@
     <!-- Spielstart: Spielerdaten + Grundregeln -->
     <section id="viewSetup" hidden>
         <div class="box">
-            <h2>🕹️ Willkommen, Spieler.</h2>
+            <h2><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg>Willkommen, Spieler.</h2>
             <p class="note">Bevor das Abenteuer startet, legst du deine Spielerdaten und die Grundregeln fest. Die Regeln lassen sich nach dem Spielstart nicht mehr ändern.</p>
             <form id="setupForm">
                 <div class="grid2">
@@ -117,7 +163,7 @@
                     <p class="note" style="margin:6px 0 0">Markiere, was du schon erledigt hast:</p>
                     <div class="pick-list" id="pickList"></div>
                 </div>
-                <button class="btn" type="submit" id="startBtn" style="margin-top:8px">▶️ Spiel starten</button>
+                <button class="btn" type="submit" id="startBtn" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Spiel starten</button>
             </form>
             <div id="setupMsg" class="msg" hidden></div>
         </div>
@@ -146,10 +192,10 @@
         <div class="secs" id="dashSecs">
             <div class="box sec" data-sec="mates">
                 <div class="sec-head">
-                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-mates">👥 Mitspieler<span class="chev" aria-hidden="true"></span></button></h2>
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-mates"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>Mitspieler<span class="chev" aria-hidden="true"></span></button></h2>
                     <div class="sec-move">
-                        <button class="sec-btn" type="button" data-move="-1" aria-label="Mitspieler nach oben">▲</button>
-                        <button class="sec-btn" type="button" data-move="1" aria-label="Mitspieler nach unten">▼</button>
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Mitspieler nach oben"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Mitspieler nach unten"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
                     </div>
                 </div>
                 <div class="sec-body" id="sec-mates">
@@ -158,10 +204,10 @@
             </div>
             <div class="box sec" data-sec="board">
                 <div class="sec-head">
-                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-board">🏆 Scoreboard<span class="chev" aria-hidden="true"></span></button></h2>
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-board"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg>Scoreboard<span class="chev" aria-hidden="true"></span></button></h2>
                     <div class="sec-move">
-                        <button class="sec-btn" type="button" data-move="-1" aria-label="Scoreboard nach oben">▲</button>
-                        <button class="sec-btn" type="button" data-move="1" aria-label="Scoreboard nach unten">▼</button>
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Scoreboard nach oben"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Scoreboard nach unten"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
                     </div>
                 </div>
                 <div class="sec-body" id="sec-board">
@@ -171,10 +217,10 @@
             </div>
             <div class="box sec half" data-sec="feed">
                 <div class="sec-head">
-                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-feed">⚡ Letzte Aktivität<span class="chev" aria-hidden="true"></span></button></h2>
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-feed"><svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg>Letzte Aktivität<span class="chev" aria-hidden="true"></span></button></h2>
                     <div class="sec-move">
-                        <button class="sec-btn" type="button" data-move="-1" aria-label="Letzte Aktivität nach oben">▲</button>
-                        <button class="sec-btn" type="button" data-move="1" aria-label="Letzte Aktivität nach unten">▼</button>
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Letzte Aktivität nach oben"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Letzte Aktivität nach unten"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
                     </div>
                 </div>
                 <div class="sec-body" id="sec-feed">
@@ -183,10 +229,10 @@
             </div>
             <div class="box sec half" data-sec="group">
                 <div class="sec-head">
-                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-group">📊 Die Gruppe<span class="chev" aria-hidden="true"></span></button></h2>
+                    <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-group"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Die Gruppe<span class="chev" aria-hidden="true"></span></button></h2>
                     <div class="sec-move">
-                        <button class="sec-btn" type="button" data-move="-1" aria-label="Die Gruppe nach oben">▲</button>
-                        <button class="sec-btn" type="button" data-move="1" aria-label="Die Gruppe nach unten">▼</button>
+                        <button class="sec-btn" type="button" data-move="-1" aria-label="Die Gruppe nach oben"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+                        <button class="sec-btn" type="button" data-move="1" aria-label="Die Gruppe nach unten"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
                     </div>
                 </div>
                 <div class="sec-body" id="sec-group">
@@ -201,7 +247,7 @@
     <section id="viewGame" hidden>
         <div class="viewing" id="viewingBox" hidden></div>
         <div class="box legend" id="legendBox" hidden>
-            <h2>🏆 ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</h2>
+            <h2><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</h2>
             <p><b>Status:</b> 100/100 Quests abgeschlossen · <b>Rang:</b> Legendary World Traveler (Level 100) · <b>Achievement Score:</b> 10.000 G</p>
             <p style="margin-top:8px">New Game Plus kann jetzt starten.</p>
         </div>
@@ -220,7 +266,7 @@
 
         <div class="box sec" data-sec="titles">
             <div class="sec-head">
-                <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-titles">🎖️ Freigeschaltete Titel <span class="chip" id="titleCount"></span><span class="chev" aria-hidden="true"></span></button></h2>
+                <h2><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="sec-titles"><svg class="ic" aria-hidden="true"><use href="#i-award"/></svg>Freigeschaltete Titel <span class="chip" id="titleCount"></span><span class="chev" aria-hidden="true"></span></button></h2>
             </div>
             <div class="sec-body" id="sec-titles">
                 <p class="note">Ein Titel wird freigeschaltet, sobald alle Quests einer Phase abgeschlossen sind.</p>
@@ -229,14 +275,14 @@
         </div>
 
         <div class="box qfilter" id="questFilter" role="search">
-            <input type="search" id="qSearch" placeholder="🔍 Quests durchsuchen (Titel, Beschreibung, Kommentar, Level)" aria-label="Quests durchsuchen" autocomplete="off">
+            <div class="qsearch"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="qSearch" placeholder="Quests durchsuchen (Titel, Beschreibung, Kommentar, Level)" aria-label="Quests durchsuchen" autocomplete="off"></div>
             <div class="qfilter-row">
                 <div class="chips" id="qTags" role="group" aria-label="Nach Status filtern">
                     <button class="chip tag on" type="button" data-tag="all" aria-pressed="true">Alle</button>
-                    <button class="chip tag" type="button" data-tag="open" aria-pressed="false">⬜ Offen</button>
-                    <button class="chip tag" type="button" data-tag="available" aria-pressed="false">🔓 Verfügbar</button>
-                    <button class="chip tag" type="button" data-tag="done" aria-pressed="false">✅ Erledigt</button>
-                    <button class="chip tag" type="button" data-tag="note" aria-pressed="false">💬 Mit Kommentar</button>
+                    <button class="chip tag" type="button" data-tag="open" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-circle"/></svg>Offen</button>
+                    <button class="chip tag" type="button" data-tag="available" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-unlock"/></svg>Verfügbar</button>
+                    <button class="chip tag" type="button" data-tag="done" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg>Erledigt</button>
+                    <button class="chip tag" type="button" data-tag="note" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-message"/></svg>Mit Kommentar</button>
                 </div>
                 <select id="qPhase" aria-label="Nach Phase filtern"><option value="">Alle Phasen</option></select>
             </div>
@@ -247,7 +293,7 @@
         <div id="gameMsg" class="msg" hidden></div>
 
         <div class="box" id="notesBox" style="margin-top:20px">
-            <h2>📝 Gedanken & Notizen</h2>
+            <h2><svg class="ic" aria-hidden="true"><use href="#i-notes"/></svg>Gedanken &amp; Notizen</h2>
             <p class="note">Wird automatisch gespeichert, wenn du das Feld verlässt.</p>
             <textarea id="notes" rows="12" aria-label="Gedanken und Notizen" placeholder="Was nimmst du dir vor? Was hast du erlebt? Ideen für die nächsten Quests …"></textarea>
             <div id="notesMsg" class="msg" hidden></div>
@@ -259,6 +305,8 @@
     const $ = s => document.querySelector(s);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const show = (el, on = true) => { el.hidden = !on; };
+    /* Linien-Symbol aus dem SVG-Sprite am Ende von body */
+    const ic = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
     function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
     const VIEWS = ['#viewLoggedOut', '#viewRecovery', '#viewSetup', '#viewDashboard', '#viewGame'];
     const TABS = { start: '#viewDashboard', questlog: '#viewGame' };
@@ -270,7 +318,7 @@
         show($('#mainNav'), !!tab);
         document.querySelectorAll('#mainNav a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
     };
-    const ageText = b => { const a = RQ.ageFrom(b); return a === null ? '' : `🎂 ${a} Jahre alt`; };
+    const ageText = b => { const a = RQ.ageFrom(b); return a === null ? '' : `${ic('cake')} ${a} Jahre alt`; };
     function badBirthday(b) { return b && (b < '1900-01-01' || b > RQ.today()) ? 'Bitte ein gültiges Geburtsdatum eintragen.' : ''; }
 
     /* Profilbild oder Initialen im Kreis */
@@ -298,9 +346,9 @@
     /* Hell/Dunkel */
     function applyTheme(dark, save) {
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        $('#themeToggle').textContent = dark ? '☀️' : '🌙';
+        $('#themeToggle').innerHTML = ic(dark ? 'sun' : 'moon');
         $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
-        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#6d28d9';
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#f2f2f7';
         if (save) { try { localStorage.setItem('overall-theme', dark ? 'dark' : 'light'); } catch (e) {} }
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
@@ -348,10 +396,10 @@
         only('#viewLoggedOut'); show($('#meBtn'), false); show($('#gmBtn'), false); closeMenu();
         const s = await RQ.publicStats();
         $('#publicStats').innerHTML = [
-            ['🎮', s ? fmtNum(s.players) : '–', 'Spieler'],
-            ['✅', s ? fmtNum(s.quests_done) : '–', 'Quests erledigt'],
-            ['🏆', s ? fmtNum(s.legends) : '–', 'Legenden']
-        ].map(([i, n, t]) => `<div class="stat"><b>${i} ${n}</b><span>${t}</span></div>`).join('');
+            ['gamepad', s ? fmtNum(s.players) : '–', 'Spieler'],
+            ['check-circle', s ? fmtNum(s.quests_done) : '–', 'Quests erledigt'],
+            ['trophy', s ? fmtNum(s.legends) : '–', 'Legenden']
+        ].map(([i, n, t]) => `<div class="stat"><span class="si">${ic(i)}</span><b>${n}</b><span>${t}</span></div>`).join('');
     }
     $('#loginForm').onsubmit = async e => {
         e.preventDefault();
@@ -364,7 +412,7 @@
     $('#hideReset').onclick = () => { show($('#resetForm'), false); show($('#loginForm')); msg($('#loginMsg'), ''); };
     $('#resetForm').onsubmit = async e => {
         e.preventDefault();
-        try { await RQ.resetPassword($('#resetEmail').value.trim()); msg($('#loginMsg'), '📧 Falls die Adresse bekannt ist, kommt gleich eine E-Mail mit einem Link.', true); }
+        try { await RQ.resetPassword($('#resetEmail').value.trim()); msg($('#loginMsg'), 'Falls die Adresse bekannt ist, kommt gleich eine E-Mail mit einem Link.', true); }
         catch (err) { msg($('#loginMsg'), RQ.errorText(err)); }
     };
 
@@ -433,12 +481,12 @@
         only('#viewGame'); show($('#meBtn')); showGm(); show($('#offlineHint'), false);
         ['#legendBox', '#notesBox', '#questFilter'].forEach(s => show($(s), false));
         show($('#viewingBox'), false);
-        $('#phaseList').innerHTML = '<div class="box"><p class="note" style="margin:0">⏳ Questlog wird geladen …</p></div>';
+        $('#phaseList').innerHTML = '<div class="box"><p class="note" style="margin:0">Questlog wird geladen …</p></div>';
         let r;
         try { r = await RQ.loadPlayerLog(id); }
-        catch (err) { $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(err))}<br><a class="link-btn" href="#start">← Zurück zur Startseite</a></div>`; return; }
+        catch (err) { $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(err))}<br><a class="link-btn" href="#start">${ic('arrow-left')}Zurück zur Startseite</a></div>`; return; }
         if (location.hash !== '#questlog/' + id) return;   /* inzwischen weitergeklickt */
-        if (!r) { $('#phaseList').innerHTML = '<div class="box"><h2>🔒 Nicht freigegeben</h2><p class="note">Dieses Questlog ist nicht für Mitspieler freigegeben.</p><a class="link-btn" href="#start">← Zurück zur Startseite</a></div>'; return; }
+        if (!r) { $('#phaseList').innerHTML = '<div class="box"><h2>' + ic('lock') + 'Nicht freigegeben</h2><p class="note">Dieses Questlog ist nicht für Mitspieler freigegeben.</p><a class="link-btn" href="#start">' + ic('arrow-left') + 'Zurück zur Startseite</a></div>'; return; }
         const o = r.owner;
         cur = { other: true, owner: o, progress: r.progress,
                 profile: { id: o.id, player_name: o.name, hardcore: o.hardcore, starthilfe: o.starthilfe, game_started_at: o.game_started_at } };
@@ -447,11 +495,11 @@
         if (location.hash !== '#questlog/' + id) return;
         renderGame(false);
         const gmEdit = o.can_edit;
-        const hints = [!o.game_started_at ? 'hat das Spiel noch nicht gestartet' : '', o.visible === false ? '👻 für Mitspieler ausgeblendet' : '', gmEdit && !o.share_questlog ? '🔒 nicht freigegeben' : ''].filter(Boolean);
+        const hints = [!o.game_started_at ? 'hat das Spiel noch nicht gestartet' : '', o.visible === false ? 'für Mitspieler ausgeblendet' : '', gmEdit && !o.share_questlog ? 'nicht freigegeben' : ''].filter(Boolean);
         $('#viewingBox').innerHTML = `<span class="ava">${avaHtml(o.name, pic)}</span>
-            <div><b>${gmEdit ? '🛡️ Gamemaster-Modus' : '👀 Nur ansehen'}</b>: Questlog von <b>${esc(o.name)}</b>${hints.length ? ` <span class="mute">· ${esc(hints.join(' · '))}</span>` : ''}
+            <div><b>${gmEdit ? ic('shield') + ' Gamemaster-Modus' : ic('eye') + ' Nur ansehen'}</b>: Questlog von <b>${esc(o.name)}</b>${hints.length ? ` <span class="mute">· ${esc(hints.join(' · '))}</span>` : ''}
             <br><small>${gmEdit ? 'Du kannst Quests abschließen, wieder öffnen und Datum oder Kommentar ändern. Die Spielregeln gelten weiter.' : 'Hier kannst du nichts ändern.'}</small></div>
-            <a class="link-btn" href="#start">← Zurück</a>`;
+            <a class="link-btn" href="#start">${ic('arrow-left')}Zurück</a>`;
         show($('#viewingBox'));
     }
 
@@ -464,11 +512,11 @@
         $('#playerName').textContent = p.player_name || p.display_name || 'Spieler';
         $('#xpFill').style.width = n + '%';
         $('#playerChips').innerHTML = [
-            `<span class="chip xp">⭐ ${fmtNum(n * 100)} G</span>`,
+            `<span class="chip xp">${ic('star')} ${fmtNum(n * 100)} G</span>`,
             `<span class="chip">${n}/100 Quests</span>`,
-            p.game_started_at ? `<span class="chip">🗓️ Spielbeginn ${fmtDate(p.game_started_at)}</span>` : '',
-            p.hardcore ? '<span class="chip hard">💀 Hardcore Mode</span>' : '',
-            p.starthilfe ? '<span class="chip">🤝 Starthilfe</span>' : ''
+            p.game_started_at ? `<span class="chip">${ic('calendar')} Spielbeginn ${fmtDate(p.game_started_at)}</span>` : '',
+            p.hardcore ? `<span class="chip hard">${ic('skull')} Hardcore Mode</span>` : '',
+            p.starthilfe ? `<span class="chip">${ic('buoy')} Starthilfe</span>` : ''
         ].join('');
         const next = featuredQuest();
         show($('#nextQuest'), !!next);
@@ -478,7 +526,7 @@
         $('#titleCount').textContent = `${game.phases.filter(phaseDone).length}/${game.phases.length}`;
         $('#titleList').innerHTML = game.phases.map(ph => {
             const on = phaseDone(ph);
-            return `<div class="title-item${on ? ' on' : ''}">${on ? '🏅' : '🔒'} ${esc(ph.reward_title)}</div>`;
+            return `<div class="title-item${on ? ' on' : ''}">${ic(on ? 'award' : 'lock')} ${esc(ph.reward_title)}</div>`;
         }).join('');
 
         show($('#questFilter'));
@@ -494,8 +542,8 @@
         let h = 0; for (const c of RQ.today() + cur.profile.id) h = (h * 31 + c.codePointAt(0)) >>> 0;
         return { q: avail[h % avail.length], daily: true };
     }
-    const featuredHead = f => f.daily ? `✨ <b>Inspiration des Tages: Level ${f.q.level} · ${qLabel(f.q)}</b>`
-                                      : `🎯 <b>Nächste Quest: Level ${f.q.level} · ${qLabel(f.q)}</b>`;
+    const featuredHead = f => f.daily ? `${ic('sparkles')} <b>Inspiration des Tages: Level ${f.q.level} · ${qLabel(f.q)}</b>`
+                                      : `${ic('target')} <b>Nächste Quest: Level ${f.q.level} · ${qLabel(f.q)}</b>`;
 
     /* Suche und Filter im Questlog */
     const filter = { text: '', tag: 'all', phase: 0 };
@@ -530,11 +578,11 @@
             const open = on || (openIds.size ? openIds.has(ph.id) : ph.id === firstOpen);
             return `<details class="phase" data-id="${ph.id}"${open ? ' open' : ''}>
                 <summary><div><div class="ph-title">${esc(ph.title)}</div><div class="ph-sub">${esc(ph.subtitle)}</div></div>
-                    <div class="ph-count${all ? ' done' : ''}">${on ? `${shown.length} Treffer · ` : ''}${all ? '✅ ' : ''}${d}/${qs.length}</div></summary>
+                    <div class="ph-count${all ? ' done' : ''}">${on ? `${shown.length} Treffer · ` : ''}${all ? ic('check') : ''}${d}/${qs.length}</div></summary>
                 <div class="ph-body">
-                    <p class="ph-meta">🧭 <b>Expeditions-Ziel:</b> ${esc(ph.goal)}<br>🎁 <b>Belohnung:</b> ${esc(ph.reward_title)}</p>
+                    <p class="ph-meta"><span>${ic('compass')}<span><b>Expeditions-Ziel:</b> ${esc(ph.goal)}</span></span><span>${ic('gift')}<span><b>Belohnung:</b> ${esc(ph.reward_title)}</span></span></p>
                     ${shown.map(questRow).join('')}
-                    ${on ? '' : `<div class="milestone${all ? ' on' : ''}">${all ? '🎁 MEILENSTEIN ERREICHT' : '⬜ Meilenstein noch offen'}</div>`}
+                    ${on ? '' : `<div class="milestone${all ? ' on' : ''}">${all ? ic('flag') + 'Meilenstein erreicht' : ic('flag') + 'Meilenstein noch offen'}</div>`}
                 </div></details>`;
         }).join('');
         show($('#qInfo'), on);
@@ -562,18 +610,18 @@
         const label = pr ? `Level ${q.level} als offen markieren` : `Level ${q.level} abschließen`;
         const off = lock || !canEdit;
         return `<div class="quest${pr ? ' done' : ''}${lock ? ' locked' : ''}">
-            <button class="qbox" type="button" data-level="${q.level}" aria-label="${esc(canEdit ? label : pr ? 'Abgeschlossen' : 'Offen')}" title="${esc(canEdit ? lock || label : '')}"${off ? ' disabled' : ''}>${pr ? '✓' : lock ? '🔒' : ''}</button>
+            <button class="qbox" type="button" data-level="${q.level}" aria-label="${esc(canEdit ? label : pr ? 'Abgeschlossen' : 'Offen')}" title="${esc(canEdit ? lock || label : '')}"${off ? ' disabled' : ''}>${pr ? ic('check') : lock ? ic('lock') : ''}</button>
             <div class="qlvl">Lv ${q.level}</div>
             <div><div class="qname">${qLabel(q)}</div><div class="qdesc">${esc(q.description)}</div>
-                ${pr ? (editing === q.level && canEdit ? questEdit(q, pr) : `<div class="qdate">${pr.before_start ? '🤝 Vor Spielbeginn erledigt' : '✅ Abgeschlossen am ' + fmtDate(pr.completed_at)}${canEdit ? ` <button class="qedit-btn" type="button" data-edit="${q.level}" title="Abschlussdatum und Kommentar bearbeiten">✏️ ${pr.note ? 'Bearbeiten' : 'Datum / Kommentar'}</button>` : ''}</div>
-                ${pr.note ? `<div class="qnote">💬 ${esc(pr.note)}</div>` : ''}`) : ''}</div>
+                ${pr ? (editing === q.level && canEdit ? questEdit(q, pr) : `<div class="qdate">${pr.before_start ? ic('buoy') + ' Vor Spielbeginn erledigt' : ic('check-circle') + ' Abgeschlossen am ' + fmtDate(pr.completed_at)}${canEdit ? ` <button class="qedit-btn" type="button" data-edit="${q.level}" title="Abschlussdatum und Kommentar bearbeiten">${ic('pencil')} ${pr.note ? 'Bearbeiten' : 'Datum / Kommentar'}</button>` : ''}</div>
+                ${pr.note ? `<div class="qnote">${ic('message')}<span>${esc(pr.note)}</span></div>` : ''}`) : ''}</div>
         </div>`;
     }
     /* Abschlussdatum (nur bei Quests nach Spielbeginn) und Kommentar bearbeiten */
     function questEdit(q, pr) {
         const start = cur.profile.game_started_at ? localDay(cur.profile.game_started_at) : '';
         return `<form class="qedit" data-level="${q.level}">
-            ${pr.before_start ? '<div class="qdate">🤝 Vor Spielbeginn erledigt</div>' :
+            ${pr.before_start ? `<div class="qdate">${ic('buoy')} Vor Spielbeginn erledigt</div>` :
               `<label>Abschlussdatum<input type="date" name="day" required value="${localDay(pr.completed_at)}"${start ? ` min="${start}"` : ''} max="${RQ.today()}"></label>`}
             <label>Kommentar<textarea name="note" maxlength="1000" rows="3" placeholder="Wie war's? Mit wem? Was ist hängen geblieben?">${esc(pr.note || '')}</textarea></label>
             <div class="qedit-actions"><button class="btn" type="submit">Speichern</button><button class="link-btn" type="button" data-cancel>Abbrechen</button></div>
@@ -634,7 +682,7 @@
         } catch (err) { btn.disabled = false; msg($('#gameMsg'), RQ.errorText(err)); $('#gameMsg').scrollIntoView({ block: 'nearest' }); }
     };
     $('#notes').onchange = async () => {
-        try { await RQ.saveProfile({ notes: $('#notes').value }); game.profile.notes = $('#notes').value; msg($('#notesMsg'), '✅ Gespeichert.', true); setTimeout(() => msg($('#notesMsg'), ''), 2000); }
+        try { await RQ.saveProfile({ notes: $('#notes').value }); game.profile.notes = $('#notes').value; msg($('#notesMsg'), 'Gespeichert.', true); setTimeout(() => msg($('#notesMsg'), ''), 2000); }
         catch (err) { msg($('#notesMsg'), RQ.errorText(err)); }
     };
 
@@ -650,7 +698,7 @@
     function paintMyAvatar() {
         const b = $('#meBtn');
         b.classList.toggle('has-photo', !!myAvatar);
-        b.innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : '👤';
+        b.innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : ic('user');
         $('#menuName').textContent = myName();
         ['#dashAva', '#menuAva'].forEach(s => { $(s).innerHTML = avaHtml(myName(), myAvatar); });
     }
@@ -665,25 +713,25 @@
 
     function renderHero() {
         const p = game.profile, n = doneCount(), me = dash && dash.players.find(x => x.is_me);
-        $('#dashHello').textContent = `Hallo, ${myName()}! 👋`;
+        $('#dashHello').textContent = `Hallo, ${myName()}!`;
         const t = currentTitle(), nextPh = lockedTitle();
         const left = nextPh ? game.quests.filter(q => q.phase_id === nextPh.id && !isDone(q.level)).length : 0;
-        $('#dashSub').innerHTML = `<b>Level ${n}</b>${t ? ` · 🏅 ${esc(t)}` : ''}` +
+        $('#dashSub').innerHTML = `<b>Level ${n}</b>${t ? ` · ${ic('award')} ${esc(t)}` : ''}` +
             (nextPh ? `<br><span class="mute">Noch ${left} ${left === 1 ? 'Quest' : 'Quests'} bis zum Titel „${esc(nextPh.reward_title)}“</span>` : '');
         $('#dashXp').style.width = n + '%';
         const rank = me && dash.players.filter(x => x.level > me.level).length + 1;
         $('#dashChips').innerHTML = [
-            `<span class="chip xp">⭐ ${fmtNum(n * 100)} G</span>`,
-            rank && dash.players.length > 1 ? `<span class="chip">🏆 Platz ${rank} von ${dash.players.length}</span>` : '',
-            me && me.quests_7d ? `<span class="chip">🔥 ${me.quests_7d} diese Woche</span>` : '',
-            p.hardcore ? '<span class="chip hard">💀 Hardcore Mode</span>' : '',
-            p.visible === false ? '<a class="chip" href="/konto.html?from=questlog#app-questlog">👻 Für Mitspieler ausgeblendet</a>' : ''
+            `<span class="chip xp">${ic('star')} ${fmtNum(n * 100)} G</span>`,
+            rank && dash.players.length > 1 ? `<span class="chip">${ic('trophy')} Platz ${rank} von ${dash.players.length}</span>` : '',
+            me && me.quests_7d ? `<span class="chip">${ic('flame')} ${me.quests_7d} diese Woche</span>` : '',
+            p.hardcore ? `<span class="chip hard">${ic('skull')} Hardcore Mode</span>` : '',
+            p.visible === false ? `<a class="chip" href="/konto.html?from=questlog#app-questlog">${ic('eye-off')} Für Mitspieler ausgeblendet</a>` : ''
         ].join('');
         const next = featuredQuest();
         show($('#dashNext'), !!next);
         if (next) $('#dashNext').innerHTML = `<div>${featuredHead(next)}<br>${esc(next.q.description)}</div>
-            <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.q.level}">✅ Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog →</a></div>`;
-        if (isDone(100)) { show($('#dashNext')); $('#dashNext').innerHTML = '🏆 <b>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</b><br>Alle 100 Quests abgeschlossen. New Game Plus kann starten.'; }
+            <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.q.level}">${ic('check')}Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog${ic('arrow-right')}</a></div>`;
+        if (isDone(100)) { show($('#dashNext')); $('#dashNext').innerHTML = ic('trophy') + ' <b>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</b><br>Alle 100 Quests abgeschlossen. New Game Plus kann starten.'; }
     }
 
     async function renderDashboard() {
@@ -692,7 +740,7 @@
         msg($('#dashMsg'), '');
         renderHero();
         if (!dash) {
-            ['#mates', '#board', '#feed'].forEach(s => { $(s).innerHTML = '<p class="note" style="margin:0">⏳ Wird geladen …</p>'; });
+            ['#mates', '#board', '#feed'].forEach(s => { $(s).innerHTML = '<p class="note" style="margin:0">Wird geladen …</p>'; });
             try { dash = await RQ.loadDashboard(); }
             catch (err) {
                 ['#mates', '#board', '#feed'].forEach(s => { $(s).innerHTML = ''; });
@@ -709,17 +757,17 @@
         /* Geburtstage */
         const bdays = dash.players.filter(x => x.birthday_today);
         show($('#bdayBanner'), !!bdays.length);
-        $('#bdayBanner').innerHTML = bdays.map(x => x.is_me ? `🎂 Alles Gute zum Geburtstag, <b>${esc(x.name)}</b>! 🎉` : `🎂 <b>${esc(x.name)}</b> hat heute Geburtstag!`).join('<br>');
+        $('#bdayBanner').innerHTML = bdays.map(x => x.is_me ? `${ic('cake')} Alles Gute zum Geburtstag, <b>${esc(x.name)}</b>!` : `${ic('cake')} <b>${esc(x.name)}</b> hat heute Geburtstag!`).join('<br>');
 
         /* Mitspieler (minimalistisch) */
         const mates = dash.players.filter(x => !x.is_me);
         const mateTag = x => x.shared ? `a class="mate open" href="#questlog/${esc(x.id)}"` : 'div class="mate"';
         $('#mates').innerHTML = mates.length ? mates.map(x => `<${mateTag(x)} title="${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}${x.shared ? ' · Questlog ansehen' : ''}">
-                <span class="ava">${avaHtml(x.name, pic(x))}</span><b>${esc(x.name)}</b><small>${x.started ? 'Level ' + x.level : 'noch nicht gestartet'}</small>${x.shared ? '<small class="mate-log">📜 Questlog</small>' : ''}</${x.shared ? 'a' : 'div'}>`).join('')
+                <span class="ava">${avaHtml(x.name, pic(x))}</span><b>${esc(x.name)}</b><small>${x.started ? 'Level ' + x.level : 'noch nicht gestartet'}</small>${x.shared ? `<small class="mate-log">${ic('scroll')} Questlog</small>` : ''}</${x.shared ? 'a' : 'div'}>`).join('')
             : '<p class="note" style="margin:0">Noch keine Mitspieler zu sehen.</p>';
 
         /* Scoreboard */
-        const medal = r => ['🥇', '🥈', '🥉'][r - 1] || r + '.';
+        const medal = r => r <= 3 ? `<span class="medal m${r}" aria-label="Platz ${r}">${r}</span>` : r + '.';
         $('#board').innerHTML = dash.players.map(x => {
             const r = dash.players.filter(y => y.level > x.level).length + 1;
             const last = x.last_level ? `Lv ${x.last_level} · ${qLabelByLevel(x.last_level, x.last_quest)} <span class="mute">· ${esc(ago(x.last_completed_at))}</span>` : '<span class="mute">Noch keine Quest abgeschlossen</span>';
@@ -727,9 +775,9 @@
                 <div class="rank">${medal(r)}</div>
                 <span class="ava">${avaHtml(x.name, pic(x))}</span>
                 <div class="who">
-                    <div class="who-name">${esc(x.name)}${x.is_me ? ' <span class="chip">Du</span>' : ''}${x.role === 'gamemaster' ? ' <span title="Gamemaster">🛡️</span>' : ''}${x.hardcore ? ' <span title="Hardcore Mode">💀</span>' : ''}${x.birthday_today ? ' 🎂' : ''}${x.is_me && x.visible === false ? ' <span class="chip">👻 nur für dich sichtbar</span>' : ''}</div>
-                    <div class="who-title">${x.title ? '🏅 ' + esc(x.title) : `<span class="mute">${x.started ? 'Noch kein Titel' : 'Noch nicht gestartet'}</span>`}</div>
-                    <div class="who-last">✅ Zuletzt: ${last}</div>
+                    <div class="who-name">${esc(x.name)}${x.is_me ? ' <span class="chip">Du</span>' : ''}${x.role === 'gamemaster' ? ` <span title="Gamemaster">${ic('shield')}</span>` : ''}${x.hardcore ? ` <span title="Hardcore Mode" class="hard">${ic('skull')}</span>` : ''}${x.birthday_today ? ' ' + ic('cake') : ''}${x.is_me && x.visible === false ? ` <span class="chip">${ic('eye-off')} nur für dich sichtbar</span>` : ''}</div>
+                    <div class="who-title">${x.title ? ic('award') + ' ' + esc(x.title) : `<span class="mute">${x.started ? 'Noch kein Titel' : 'Noch nicht gestartet'}</span>`}</div>
+                    <div class="who-last">${ic('check-circle')} Zuletzt: ${last}</div>
                 </div>
                 <div class="lv"><b>${x.level}</b><span>Level</span><div class="mini"><div style="width:${x.level}%"></div></div></div>
             </div>`;
@@ -748,12 +796,12 @@
         const champ = dash.players.filter(x => x.quests_7d > 0).sort((a, b) => b.quests_7d - a.quests_7d)[0];
         const top = dash.players[0];
         $('#groupStats').innerHTML = [
-            ['👥', fmtNum(dash.players.length), 'Spieler'],
-            ['✅', fmtNum(sum('level')), 'Quests erledigt'],
-            ['🔥', fmtNum(sum('quests_7d')), 'diese Woche'],
-            ['👑', top && top.level ? esc(top.name) : '–', 'Höchstes Level'],
-            ['⚡', champ ? esc(champ.name) : '–', 'Wochen-Champion']
-        ].map(([i, n, t]) => `<div class="stat"><b>${i} ${n}</b><span>${t}</span></div>`).join('');
+            ['users', fmtNum(dash.players.length), 'Spieler'],
+            ['check-circle', fmtNum(sum('level')), 'Quests erledigt'],
+            ['flame', fmtNum(sum('quests_7d')), 'diese Woche'],
+            ['crown', top && top.level ? esc(top.name) : '–', 'Höchstes Level'],
+            ['zap', champ ? esc(champ.name) : '–', 'Wochen-Champion']
+        ].map(([i, n, t]) => `<div class="stat"><span class="si">${ic(i)}</span><b>${n}</b><span>${t}</span></div>`).join('');
     }
 
     $('#dashNext').onclick = async e => {
@@ -764,7 +812,7 @@
             RQ.cacheSet('game_' + game.profile.id, game);
             dash = null;
             await renderDashboard();
-            msg($('#dashNextMsg'), `🎉 Level ${doneCount()} erreicht!`, true);
+            msg($('#dashNextMsg'), `Level ${doneCount()} erreicht!`, true);
         } catch (err) { b.disabled = false; msg($('#dashNextMsg'), RQ.errorText(err)); }
     };
 

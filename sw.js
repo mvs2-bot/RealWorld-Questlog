@@ -1,10 +1,10 @@
 /* The Real World – Service Worker
    - Eigene Dateien: erst Netz (max. 4 s), sonst gespeicherte Version → Updates kommen sofort an
-   - Bibliotheken/Schriften: aus dem Speicher
+   - Bibliotheken: aus dem Speicher
    - Supabase-Anfragen werden NICHT gespeichert (die App merkt sich den Spielstand selbst, pro Benutzer) */
-const P="realworld-questlog-",V=P+"v16";
+const P="realworld-questlog-",V=P+"v17";
 const CORE=['./','index.html','shared/ios-nav.js','manifest.json','shared/style.css','shared/config.js','shared/questlog.js','shared/overall-account.js','icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png','icons/apple-touch-icon.png','icons/favicon-32.png'];
-const EXTRA=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js","https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"];
+const EXTRA=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"];
 const CDN=/fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net/;
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(V);await c.addAll(CORE);await Promise.allSettled(EXTRA.map(u=>c.add(u)));await self.skipWaiting();})());});
 self.addEventListener('activate',e=>{e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith(P)&&k!==V)await caches.delete(k);await self.clients.claim();})());});
