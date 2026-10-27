@@ -520,7 +520,7 @@
         ].join('');
         const next = featuredQuest();
         show($('#nextQuest'), !!next);
-        if (next) $('#nextQuest').innerHTML = `${featuredHead(next)}<br>${esc(next.q.description)}`;
+        if (next) $('#nextQuest').innerHTML = `${featuredHead(next)}<div class="next-desc">${esc(next.q.description)}</div>`;
         show($('#legendBox'), isDone(100));
 
         $('#titleCount').textContent = `${game.phases.filter(phaseDone).length}/${game.phases.length}`;
@@ -729,7 +729,7 @@
         ].join('');
         const next = featuredQuest();
         show($('#dashNext'), !!next);
-        if (next) $('#dashNext').innerHTML = `<div>${featuredHead(next)}<br>${esc(next.q.description)}</div>
+        if (next) $('#dashNext').innerHTML = `<div>${featuredHead(next)}<div class="next-desc">${esc(next.q.description)}</div></div>
             <div class="next-actions"><button class="btn" type="button" id="dashDone" data-level="${next.q.level}">${ic('check')}Erledigt</button><a class="link-btn" href="#questlog">Zum Questlog${ic('arrow-right')}</a></div>`;
         if (isDone(100)) { show($('#dashNext')); $('#dashNext').innerHTML = ic('trophy') + ' <b>ACHIEVEMENT UNLOCKED: THE WORLD IS YOURS</b><br>Alle 100 Quests abgeschlossen. New Game Plus kann starten.'; }
     }
