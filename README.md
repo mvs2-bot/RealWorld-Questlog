@@ -19,8 +19,6 @@ shared/config.js         Supabase-URL + Publishable Key (dürfen öffentlich sei
 shared/questlog.js       Konten, Spielstand laden/speichern, Offline-Zwischenspeicher
 shared/overall-account.js  gemeinsames Konto-Modul aller Apps (Kopie, Original im Repo supabase-core)
 sw.js, manifest.json     App zum Installieren + Offline-Modus
-supabase/schema.sql      Schema des alten Projekts (nur noch zum Nachschlagen, aktuell: Repo supabase-core)
-supabase/functions/      Edge Function "gamemaster" für die Kontenverwaltung
 .github/workflows/       Keepalive, damit das kostenlose Supabase-Projekt nicht pausiert
 ```
 
@@ -28,14 +26,13 @@ supabase/functions/      Edge Function "gamemaster" für die Kontenverwaltung
 
 Das Questlog läuft im gemeinsamen Supabase-Core-Projekt (`travelbase`, zusammen mit TravelBase).
 Konten und Profile (Anzeigename, Geburtsdatum, Profilbild) sind dort global, das Questlog nutzt die
-Tabellen mit Präfix `questlog_*`. Das Schema liegt als Migration im Repo `supabase-core`
-(`supabase/migrations/…_questlog_core.sql`); `supabase/schema.sql` hier ist nur noch der Stand des alten
-Projekts `realworld-questlog`.
+Tabellen mit Präfix `questlog_*`. Schema und Edge Function `gamemaster` liegen im Repo `supabase-core`
+(`supabase/migrations/…_questlog_core.sql`, `supabase/functions/gamemaster/`).
 
 1. Phasen und Quests in `questlog_phases` und `questlog_quests` einspielen (Seed liegt **nicht** in diesem Repo).
 2. Unter Authentication → URL Configuration die Adresse der Webseite als Redirect URL eintragen,
    damit Passwort-Links zurück auf die Seite führen.
-3. Unter Edge Functions die Funktion `gamemaster` mit dem Inhalt von `supabase/functions/gamemaster/index.ts`
+3. Unter Edge Functions die Funktion `gamemaster` aus `supabase-core` (`supabase/functions/gamemaster/index.ts`)
    anlegen und in ihren Einstellungen „Verify JWT“ ausschalten (die Funktion prüft die Anmeldung selbst).
 4. Zugang gibt es über `overall_app_access` (App `questlog`): Rolle `admin` = Gamemaster, `member` = Spieler:in.
    Globale Admins sind automatisch Gamemaster. Weitere Spieler:innen legt der Gamemaster in den Admin-Einstellungen im Dashboard (`/admin.html`) an.
