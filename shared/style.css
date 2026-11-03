@@ -241,15 +241,30 @@ details.phase > summary > div:first-child { min-width: 0; flex: 1 1 auto; }
 .me-btn { position: relative; overflow: hidden; }
 .me-btn img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .me-wrap { position: relative; }
-.me-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 200; min-width: 250px; max-width: calc(100vw - 32px); background: var(--card); color: var(--text); border-radius: 14px; box-shadow: var(--pop); padding: 6px; }
-:root[data-theme="dark"] .me-menu { background: #2c2c2e; }
-.me-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; border-bottom: .5px solid var(--sep); margin-bottom: 4px; }
-.me-head > div { min-width: 0; }
-.me-head b { display: block; color: var(--ink); font-size: 14px; }
-.me-item { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; background: none; border: 0; border-radius: 9px; padding: 10px 12px; min-height: 44px; font-size: 14px; font-weight: 400; color: var(--ink); text-align: left; text-decoration: none; }
-.me-item .ic { color: var(--mute); width: 18px; height: 18px; order: 2; }
-.me-item:hover, .me-item:focus-visible { background: var(--hover); outline: none; }
-.me-item.danger, .me-item.danger .ic { color: var(--danger); }
+/* Kontomenü (einheitlich in allen Apps, Vorlage: JobTracker) */
+.pm-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 290px; max-width: calc(100vw - 32px); padding: 6px; color: var(--text); border-radius: 14px; box-shadow: var(--pop, 0 12px 40px rgba(0, 0, 0, .18), 0 0 0 .5px rgba(0, 0, 0, .06)); background: var(--card); text-align: left; }
+.pm-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; min-width: 0; }
+.pm-head > div { min-width: 0; }
+.pm-head b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-head small { display: block; font-size: 12px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-ava { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: 14px; font-weight: 600; }
+.pm-ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pm-sync { display: flex; align-items: center; gap: 8px; margin: 0 4px 6px; padding: 8px 10px; border-radius: 10px; background: var(--well); font-size: 12px; color: var(--text); }
+.pm-sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok, #34c759); flex: none; }
+.pm-sync i.pending { background: var(--warn, #ff9f0a); } .pm-sync i.error { background: var(--danger); }
+.pm-sync span { min-width: 0; }
+.pm-sync b { font-weight: 600; color: var(--ink); }
+.pm-role { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--p1-soft); color: var(--p1); }
+.pm-item { display: flex; width: 100%; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+.pm-item .ic { width: 18px; height: 18px; color: var(--mute); flex: none; }
+.pm-item:hover, .pm-item:focus-visible { background: var(--hover); outline: none; }
+.pm-item small { margin-left: auto; font-size: 11px; color: var(--mute); white-space: nowrap; }
+.pm-item.danger, .pm-item.danger .ic { color: var(--danger); }
+.pm-sep { height: 1px; margin: 4px 6px; background: var(--sep); }
+:root[data-theme="dark"] .pm-menu { background: #2c2c2e; }
+:root[data-theme="dark"] .pm-sync { background: #3a3a3c; }
+.pm-ava .ini { width: 100%; height: 100%; display: grid; place-items: center; }
 
 /* Profilbild / Initialen */
 .ava { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--p1-soft); }

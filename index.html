@@ -79,12 +79,17 @@
             <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></button>
             <div class="me-wrap">
                 <button id="meBtn" class="icon-btn me-btn" type="button" aria-label="Mein Konto" title="Mein Konto" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu" hidden><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></button>
-                <div id="meMenu" class="me-menu" role="menu" hidden>
-                    <div class="me-head"><span id="menuAva" class="ava"></span><div><b id="menuName"></b></div></div>
-                    <a class="me-item" href="/" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>Dashboard</a>
-                    <a id="menuKonto" class="me-item" href="/konto.html?from=questlog#app-questlog" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg>Kontoeinstellungen</a>
-                    <a id="gmBtn" class="me-item" href="/admin.html?from=questlog#app-questlog" role="menuitem" hidden><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Admin-Einstellungen</a>
-                    <button id="logoutBtn" class="me-item danger" type="button" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-logout"/></svg>Abmelden</button>
+                <div id="meMenu" class="pm-menu" role="menu" hidden>
+                    <div class="pm-head">
+                        <span id="menuAva" class="pm-ava"></span>
+                        <div><b id="menuName"></b><small id="menuMail"></small><span id="menuRole" class="pm-role" hidden></span></div>
+                    </div>
+                    <div id="menuSync" class="pm-sync" role="status" hidden><i></i><span><b>Cloud-Sync</b> · <span></span></span></div>
+                    <a class="pm-item" href="/" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>Dashboard</a>
+                    <a id="menuKonto" class="pm-item" href="/konto.html?from=questlog#app-questlog" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg>Kontoeinstellungen</a>
+                    <a id="gmBtn" class="pm-item" href="/admin.html?from=questlog#app-questlog" role="menuitem" hidden><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Admin-Einstellungen<small>nur Admins</small></a>
+                    <div class="pm-sep"></div>
+                    <button id="logoutBtn" class="pm-item danger" type="button" role="menuitem"><svg class="ic" aria-hidden="true"><use href="#i-logout"/></svg>Abmelden</button>
                 </div>
             </div>
         </div>
@@ -428,6 +433,7 @@
 
     /* ───────── Spielstart ───────── */
     let game = null;
+    let lastSync = null;   /* letzter erfolgreicher Abgleich mit der Cloud (Anzeige im Profilmenü) */
     const radio = name => document.querySelector(`input[name="${name}"]:checked`).value === '1';
     const showGm = () => show($('#gmBtn'), !!(game && game.profile && game.profile.role === 'gamemaster'));
     function renderSetup() {
@@ -630,6 +636,7 @@
     }
     const otherId = () => cur.other ? cur.profile.id : undefined;
     function progressChanged() {
+        lastSync = new Date();
         if (!cur.other) RQ.cacheSet('game_' + game.profile.id, game);
         dash = null;
         renderGame(false);
@@ -683,7 +690,7 @@
         } catch (err) { btn.disabled = false; msg($('#gameMsg'), RQ.errorText(err)); $('#gameMsg').scrollIntoView({ block: 'nearest' }); }
     };
     $('#notes').onchange = async () => {
-        try { await RQ.saveProfile({ notes: $('#notes').value }); game.profile.notes = $('#notes').value; msg($('#notesMsg'), 'Gespeichert.', true); setTimeout(() => msg($('#notesMsg'), ''), 2000); }
+        try { await RQ.saveProfile({ notes: $('#notes').value }); game.profile.notes = $('#notes').value; lastSync = new Date(); msg($('#notesMsg'), 'Gespeichert.', true); setTimeout(() => msg($('#notesMsg'), ''), 2000); }
         catch (err) { msg($('#notesMsg'), RQ.errorText(err)); }
     };
 
@@ -701,7 +708,14 @@
         b.classList.toggle('has-photo', !!myAvatar);
         b.innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : ic('user');
         $('#menuName').textContent = myName();
-        ['#dashAva', '#menuAva'].forEach(s => { $(s).innerHTML = avaHtml(myName(), myAvatar); });
+        $('#menuMail').textContent = (game && game.email) || '';
+        const role = game && game.profile && game.profile.app_role;
+        $('#menuRole').textContent = ROLE_LABELS[role] || role || '';
+        show($('#menuRole'), !!role);
+        $('#dashAva').innerHTML = avaHtml(myName(), myAvatar);
+        /* Kontomenü: gleiche Initialen-Farben wie in allen Apps */
+        let h = 0; for (const c of myName()) h = (h * 31 + c.codePointAt(0)) >>> 0;
+        $('#menuAva').innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : `<span class="ini" style="background:${AVATAR_COLORS[h % AVATAR_COLORS.length]}">${esc(initials(myName()))}</span>`;
     }
 
     /* ───────── Start-Dashboard ───────── */
@@ -810,6 +824,7 @@
         const level = +b.dataset.level; b.disabled = true; msg($('#dashNextMsg'), '');
         try {
             game.progress[level] = await RQ.completeQuest(level);
+            lastSync = new Date();
             RQ.cacheSet('game_' + game.profile.id, game);
             dash = null;
             await renderDashboard();
@@ -833,15 +848,24 @@
         showTab(); window.scrollTo(0, 0);
     });
 
-    /* Profilmenü am Profilbild: Kontoeinstellungen, Gamemaster-Bereich, Abmelden */
+    /* Profilmenü am Profilbild (einheitlich in allen Apps, Vorlage: JobTracker) */
+    const ROLE_LABELS = { admin: 'Admin', member: 'Mitglied', guest: 'Gast' };
+    const AVATAR_COLORS = ['#0b6e79', '#4a7356', '#b25000', '#5856d6', '#0066cc', '#a2453a'];
+    function paintSync() {
+        const box = $('#menuSync'), off = !navigator.onLine || !!(game && game.offline);
+        show(box, !!game);
+        box.querySelector('i').className = off ? 'pending' : '';
+        box.querySelector('span span').textContent = off ? 'Offline · zuletzt geladener Spielstand'
+            : lastSync ? 'Verbunden · zuletzt ' + lastSync.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'Verbunden';
+    }
     function closeMenu() { show($('#meMenu'), false); $('#meBtn').setAttribute('aria-expanded', 'false'); }
     $('#meBtn').onclick = e => {
         e.stopPropagation();
         if (!$('#meMenu').hidden) return closeMenu();
-        show($('#meMenu')); $('#meBtn').setAttribute('aria-expanded', 'true');
-        const first = $('#meMenu .me-item:not([hidden])'); if (first) first.focus();
+        paintSync(); show($('#meMenu')); $('#meBtn').setAttribute('aria-expanded', 'true');
+        const first = $('#meMenu .pm-item:not([hidden])'); if (first) first.focus();
     };
-    $('#meMenu').onclick = e => { if (e.target.closest('.me-item')) closeMenu(); };
+    $('#meMenu').onclick = e => { if (e.target.closest('.pm-item')) closeMenu(); };
     document.addEventListener('click', e => { if (!$('#meMenu').hidden && !$('#meMenu').contains(e.target)) closeMenu(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#meMenu').hidden) { closeMenu(); $('#meBtn').focus(); } });
 
@@ -855,7 +879,7 @@
         if (!RQ.configured) { show($('#setupHint')); return renderLoggedOut(); }
         const session = await RQ.getSession();
         if (!session) return renderLoggedOut();
-        try { game = await RQ.loadGame(); }
+        try { game = await RQ.loadGame(); if (game && !game.offline) lastSync = new Date(); }
         catch (e) { only('#viewGame'); show($('#questFilter'), false); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
         if (!game.quests.length) { only('#viewGame'); show($('#questFilter'), false); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
         show($('#menuKonto'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar();
