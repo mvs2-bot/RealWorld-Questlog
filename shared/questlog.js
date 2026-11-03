@@ -51,7 +51,7 @@
         ]);
         if (!role) throw new Error(NO_ACCESS);
         return { ...(p || {}), id, display_name: o && o.display_name, birthday: o && o.birthday,
-            avatar_url: o && o.avatar_path, role: role === 'admin' ? 'gamemaster' : 'spieler' };
+            avatar_url: o && o.avatar_path, role: role === 'admin' ? 'gamemaster' : 'spieler', app_role: role };
     }
 
     /* Kompletter Spielstand des angemeldeten Spielers:
