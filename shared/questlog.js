@@ -19,16 +19,21 @@
     const check = ({ data, error }) => { if (error) throw error; return data; };
     const needSb = () => { if (!sb) throw new Error('Supabase ist noch nicht eingerichtet (shared/config.js).'); };
 
+    /* Netzanfragen nicht ewig warten lassen (schlechtes Netz, App aus dem Hintergrund) */
+    const withTimeout = (p, ms) => Promise.race([p, new Promise((_, j) => setTimeout(() => j(new Error('timeout')), ms))]);
+
+    /* Hängt die Sitzungsabfrage, wird das als Fehler gemeldet (nicht als „abgemeldet“) */
     async function getSession() {
         if (!sb) return null;
-        try { return (await sb.auth.getSession()).data.session; } catch (e) { return null; }
+        try { return (await withTimeout(sb.auth.getSession(), 6000)).data.session; }
+        catch (e) { if (e && e.message === 'timeout') throw e; return null; }
     }
 
     /* Öffentliche Zahlen für die Startseite (ohne Login) */
     async function publicStats() {
         if (!sb) return cacheGet('stats');
         try {
-            const rows = check(await sb.rpc('questlog_get_public_stats'));
+            const rows = check(await withTimeout(sb.rpc('questlog_get_public_stats'), 10000));
             const s = rows && rows[0] || null;
             cacheSet('stats', s);
             return s;
@@ -61,12 +66,12 @@
         if (!session) return null;
         const key = 'game_' + session.user.id;
         try {
-            const [profile, phases, quests, progress] = await Promise.all([
+            const [profile, phases, quests, progress] = await withTimeout(Promise.all([
                 readProfile(session.user.id),
                 sb.from('questlog_phases').select('*').order('id').then(check),
                 sb.from('questlog_quests').select('*').order('level').then(check),
                 sb.from('questlog_quest_progress').select(PROGRESS).eq('user_id', session.user.id).then(check)
-            ]);
+            ]), 12000);
             const game = { profile, phases, quests, progress: Object.fromEntries(progress.map(p => [p.level, p])), email: session.user.email };
             cacheSet(key, game);
             return { ...game, offline: false };
@@ -202,7 +207,7 @@
         const now = Date.now(), missing = paths.filter(p => !signed[p] || signed[p].until < now);
         if (sb && missing.length) {
             try {
-                const rows = check(await sb.storage.from(AVATARS).createSignedUrls(missing, 3600));
+                const rows = check(await withTimeout(sb.storage.from(AVATARS).createSignedUrls(missing, 3600), 8000));
                 rows.forEach(r => { if (r.signedUrl) signed[r.path] = { url: r.signedUrl, until: now + 50 * 60 * 1000 }; });
             } catch (e) { /* offline oder Bucket fehlt → ohne Bild */ }
         }
@@ -218,10 +223,10 @@
         const session = await getSession();
         const key = 'dash_' + session.user.id;
         try {
-            const [players, activity] = await Promise.all([
+            const [players, activity] = await withTimeout(Promise.all([
                 sb.rpc('questlog_get_mitspieler').then(check),
                 sb.rpc('questlog_get_aktivitaet', { max_rows: 12 }).then(check)
-            ]);
+            ]), 12000);
             const dash = { players: players || [], activity: activity || [] };
             cacheSet(key, dash);
             return { ...dash, offline: false };
@@ -250,6 +255,6 @@
 
     window.RQ = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicStats, loadGame, saveProfile, startGame,
         completeQuest, undoQuest, updateQuest, loadPlayerLog, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, gm,
-        today, ageFrom, avatarUrls, loadDashboard,
+        today, ageFrom, avatarUrls, loadDashboard, withTimeout,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();

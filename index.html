@@ -95,6 +95,13 @@
         </div>
     </header>
 
+    <!-- Start: sichtbar, bis Anmeldung oder Spiel bereit ist -->
+    <section id="viewLoading" class="load-gate" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loadMsg" class="note">Quest Log wird geladen …</p>
+        <button id="loadRetry" class="btn" type="button" hidden>Neu laden</button>
+    </section>
+
     <div id="setupHint" class="banner" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</span></div>
     <div id="offlineHint" class="banner" hidden><svg class="ic" aria-hidden="true"><use href="#i-wifi-off"/></svg>Offline – du siehst den zuletzt geladenen Spielstand.</div>
 
@@ -349,6 +356,7 @@
     /* Kontoeinstellungen: gemeinsame Seite aller Apps im Dashboard-Repo, Questlog-Bereich vorne */
     const KONTO = '/konto.html?from=questlog#app-questlog';
     const only = id => {
+        routed = true; clearTimeout(bootTimer); show($('#viewLoading'), false);
         VIEWS.forEach(v => show($(v), v === id));
         const tab = Object.keys(TABS).find(t => TABS[t] === id);
         show($('#mainNav'), !!tab);
@@ -957,7 +965,33 @@
         return game.profile && game.profile.game_started_at ? showTab() : renderSetup();
     }
 
-    route();
+    /* Start-Wächter: Ist nach 8 s noch nichts zu sehen, Sitzung selbst nachfragen und neu starten; sonst „Neu laden“ anbieten */
+    function bootFail() {
+        if (routed) return;
+        clearTimeout(bootTimer);
+        $('#loadMsg').textContent = 'Das Quest Log startet gerade nicht. Bitte neu laden.';
+        show($('#loadRetry'));
+    }
+    let routed = false;
+    let bootTimer = setTimeout(async () => {
+        if (routed) return;
+        $('#loadMsg').textContent = 'Das dauert gerade länger als sonst …';
+        try { await RQ.getSession(); if (!routed) await RQ.withTimeout(route(), 14000); }
+        catch (e) { bootFail(); }
+    }, 8000);
+    $('#loadRetry').onclick = () => location.reload();
+
+    route().catch(e => { if (!routed) bootFail(); });
+    window.rqReady = true;
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+</script>
+<script>
+    /* Falls das Hauptskript gar nicht lief (z. B. Bibliothek nicht geladen): nach 8 s „Neu laden“ anbieten */
+    setTimeout(() => {
+        const l = document.getElementById('viewLoading');
+        if (window.rqReady || !l || l.hidden) return;
+        document.getElementById('loadMsg').textContent = 'Das Quest Log startet gerade nicht. Bitte neu laden.';
+        const b = document.getElementById('loadRetry'); b.hidden = false; b.onclick = () => location.reload();
+    }, 8000);
 </script>
 </body></html>

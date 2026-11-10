@@ -410,3 +410,10 @@ a.chip { text-decoration: none; }
     .bb-sync { position: absolute; top: 11px; left: calc(50% + 7px); width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px var(--card); }
     .bb-sync.pending { background: var(--xp); }
 }
+
+/* Ladeanzeige beim Start */
+.load-gate { text-align: center; max-width: 380px; margin: 14vh auto 0; }
+.load-gate .note { margin: 14px 0 16px; }
+.spinner { width: 28px; height: 28px; margin: 0 auto; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--p1); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
