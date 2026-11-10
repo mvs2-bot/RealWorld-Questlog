@@ -17,7 +17,7 @@
     <script src="shared/questlog.js"></script>
     <script src="shared/overall-account.js"></script>
     <link rel="stylesheet" href="shared/style.css">
-<script src="shared/ios-nav.js" defer></script>
+<script src="shared/ios-nav.js" data-bottom="72" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -305,7 +305,36 @@
             <div id="notesMsg" class="msg" hidden></div>
         </div>
     </section>
+
+    <!-- Profil (nur Handy, über die Leiste unten) -->
+    <section id="viewProfile" hidden>
+        <div class="box prof-head">
+            <span class="prof-ava" id="profAva" aria-hidden="true"></span>
+            <b id="profName"></b>
+            <small id="profMail"></small>
+            <span id="profRole" class="pm-role" hidden></span>
+        </div>
+        <div class="box prof-row">
+            <span>Darstellung</span>
+            <div class="seg" id="profTheme" role="group" aria-label="Darstellung">
+                <button type="button" data-theme-set="light">Hell</button>
+                <button type="button" data-theme-set="dark">Dunkel</button>
+            </div>
+        </div>
+        <div class="box prof-menu" id="profMenu"></div>
+        <div class="box">
+            <h2><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg><span id="profMonth">Dieser Monat</span></h2>
+            <div class="stats prof-stats" id="profStats"></div>
+        </div>
+    </section>
 </div>
+
+<!-- Tab-Leiste unten (nur Handy, direkt in body wegen backdrop-filter der Kopfzeile) -->
+<nav class="bbar" id="bottomNav" aria-label="Bereiche" hidden>
+    <a href="#start" data-tab="start"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Start</span></a>
+    <a href="#questlog" data-tab="questlog"><svg class="ic" aria-hidden="true"><use href="#i-scroll"/></svg><span>Questlog</span></a>
+    <a href="#profil" data-tab="profil"><span class="bb-ava" id="bbAva"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span><i class="bb-sync" id="bbSync" aria-hidden="true"></i><span>Profil</span></a>
+</nav>
 
 <script>
     const $ = s => document.querySelector(s);
@@ -314,15 +343,19 @@
     /* Linien-Symbol aus dem SVG-Sprite am Ende von body */
     const ic = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
     function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
-    const VIEWS = ['#viewLoggedOut', '#viewRecovery', '#viewSetup', '#viewDashboard', '#viewGame'];
-    const TABS = { start: '#viewDashboard', questlog: '#viewGame' };
+    const VIEWS = ['#viewLoggedOut', '#viewRecovery', '#viewSetup', '#viewDashboard', '#viewGame', '#viewProfile'];
+    const TABS = { start: '#viewDashboard', questlog: '#viewGame', profil: '#viewProfile' };
+    const MOBILE = matchMedia('(max-width: 767.98px)');
     /* Kontoeinstellungen: gemeinsame Seite aller Apps im Dashboard-Repo, Questlog-Bereich vorne */
     const KONTO = '/konto.html?from=questlog#app-questlog';
     const only = id => {
         VIEWS.forEach(v => show($(v), v === id));
         const tab = Object.keys(TABS).find(t => TABS[t] === id);
         show($('#mainNav'), !!tab);
-        document.querySelectorAll('#mainNav a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
+        show($('#bottomNav'), !!tab);
+        document.body.classList.toggle('in-app', !!tab);
+        document.querySelectorAll('#mainNav a, #bottomNav a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
+        if (id !== '#viewProfile') parkMenu();
     };
     const ageText = b => { const a = RQ.ageFrom(b); return a === null ? '' : `${ic('cake')} ${a} Jahre alt`; };
     function badBirthday(b) { return b && (b < '1900-01-01' || b > RQ.today()) ? 'Bitte ein gültiges Geburtsdatum eintragen.' : ''; }
@@ -356,9 +389,11 @@
         $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
         const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#f2f2f7';
         if (save) { try { localStorage.setItem('overall-theme', dark ? 'dark' : 'light'); } catch (e) {} }
+        document.querySelectorAll('#profTheme button').forEach(b => b.classList.toggle('on', (b.dataset.themeSet === 'dark') === dark));
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
     $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
+    $('#profTheme').onclick = e => { const b = e.target.closest('[data-theme-set]'); if (b) applyTheme(b.dataset.themeSet === 'dark', true); };
 
     /* ───────── Einklappbare + sortierbare Bereiche (pro Gerät gespeichert) ───────── */
     const LAYOUT = 'rq_layout_v1';
@@ -713,6 +748,8 @@
         $('#menuRole').textContent = ROLE_LABELS[role] || role || '';
         show($('#menuRole'), !!role);
         $('#dashAva').innerHTML = avaHtml(myName(), myAvatar);
+        $('#bbAva').classList.toggle('has-photo', !!myAvatar);
+        $('#bbAva').innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : ic('user');
         /* Kontomenü: gleiche Initialen-Farben wie in allen Apps */
         let h = 0; for (const c of myName()) h = (h * 31 + c.codePointAt(0)) >>> 0;
         $('#menuAva').innerHTML = myAvatar ? `<img src="${esc(myAvatar)}" alt="">` : `<span class="ini" style="background:${AVATAR_COLORS[h % AVATAR_COLORS.length]}">${esc(initials(myName()))}</span>`;
@@ -840,11 +877,12 @@
         cur = game;
         if (m || tab === 'questlog') { editing = null; return renderGame(game.offline); }
         if (tab === 'konto') return location.replace(KONTO);   /* alte Lesezeichen */
+        if (tab === 'profil' && MOBILE.matches) return renderProfile();
         return renderDashboard();
     }
     window.addEventListener('hashchange', () => {
         if (recovering || !game || !game.profile || !game.profile.game_started_at) return;
-        if (!/^#(questlog|konto)/.test(location.hash)) dash = null;   /* Dashboard immer frisch laden */
+        if (!/^#(questlog|konto|profil)/.test(location.hash)) dash = null;   /* Dashboard immer frisch laden */
         showTab(); window.scrollTo(0, 0);
     });
 
@@ -855,10 +893,11 @@
         const box = $('#menuSync'), off = !navigator.onLine || !!(game && game.offline);
         show(box, !!game);
         box.querySelector('i').className = off ? 'pending' : '';
+        $('#bbSync').className = 'bb-sync' + (off ? ' pending' : '');
         box.querySelector('span span').textContent = off ? 'Offline · zuletzt geladener Spielstand'
             : lastSync ? 'Verbunden · zuletzt ' + lastSync.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'Verbunden';
     }
-    function closeMenu() { show($('#meMenu'), false); $('#meBtn').setAttribute('aria-expanded', 'false'); }
+    function closeMenu() { if ($('#meMenu').classList.contains('inline')) return; show($('#meMenu'), false); $('#meBtn').setAttribute('aria-expanded', 'false'); }
     $('#meBtn').onclick = e => {
         e.stopPropagation();
         if (!$('#meMenu').hidden) return closeMenu();
@@ -872,6 +911,38 @@
     async function logout() { await RQ.signOut(); location.replace(location.pathname); }
     $('#logoutBtn').onclick = logout;
 
+    /* ───────── Profil-Seite (nur Handy): Konto-Menü wird hineingehängt statt als Pop-up geöffnet ───────── */
+    const meWrap = $('#meMenu').parentElement;
+    function parkMenu() {
+        const m = $('#meMenu');
+        if (m.parentElement !== meWrap) { meWrap.appendChild(m); m.classList.remove('inline'); show(m, false); }
+    }
+    function renderProfile() {
+        cur = game;
+        only('#viewProfile'); show($('#meBtn')); showGm(); show($('#offlineHint'), !!game.offline);
+        closeMenu(); paintSync();
+        const m = $('#meMenu');
+        $('#profMenu').prepend(m); m.classList.add('inline'); show(m);
+        $('#profAva').innerHTML = $('#menuAva').innerHTML;
+        $('#profName').textContent = $('#menuName').textContent;
+        $('#profMail').textContent = $('#menuMail').textContent;
+        $('#profRole').textContent = $('#menuRole').textContent; show($('#profRole'), !$('#menuRole').hidden);
+        /* Monatsstatistik aus dem eigenen Spielstand */
+        const now = new Date(), ym = localDay(now).slice(0, 7);
+        $('#profMonth').textContent = now.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+        const rows = Object.values(game.progress || {}).filter(Boolean);
+        const month = rows.filter(r => !r.before_start && r.completed_at && localDay(r.completed_at).slice(0, 7) === ym).length;
+        const started = game.profile.game_started_at, days = started ? Math.max(1, Math.round((now - new Date(started)) / 86400000)) : 0;
+        $('#profStats').innerHTML = [
+            ['check-circle', fmtNum(month), month === 1 ? 'Quest diesen Monat' : 'Quests diesen Monat'],
+            ['star', fmtNum(doneCount()), 'Level'],
+            ['award', fmtNum(game.phases.filter(phaseDone).length), 'Titel'],
+            ['flame', fmtNum(days), days === 1 ? 'Tag dabei' : 'Tage dabei']
+        ].map(([i, n, t]) => `<div class="stat"><span class="si">${ic(i)}</span><b>${n}</b><span>${t}</span></div>`).join('');
+    }
+    /* Wechsel auf Desktop-Breite: Profil-Seite gibt es dort nicht */
+    MOBILE.addEventListener('change', () => { if (!MOBILE.matches && location.hash === '#profil' && game && game.profile && game.profile.game_started_at) location.hash = '#start'; });
+
     /* ───────── Routing ───────── */
     async function route() {
         show($('#offlineHint'), false);
@@ -882,7 +953,7 @@
         try { game = await RQ.loadGame(); if (game && !game.offline) lastSync = new Date(); }
         catch (e) { only('#viewGame'); show($('#questFilter'), false); $('#phaseList').innerHTML = `<div class="box">${esc(RQ.errorText(e))}</div>`; return; }
         if (!game.quests.length) { only('#viewGame'); show($('#questFilter'), false); $('#phaseList').innerHTML = '<div class="box"><h2>Noch keine Quests</h2><p class="note" style="margin:0">Die Quest-Texte sind noch nicht in der Datenbank. Bitte das Seed-Skript im Supabase SQL Editor ausführen.</p></div>'; return; }
-        show($('#menuKonto'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar();
+        show($('#menuKonto'), !!(game.profile && game.profile.game_started_at)); await loadMyAvatar(); paintSync();
         return game.profile && game.profile.game_started_at ? showTab() : renderSetup();
     }
 
