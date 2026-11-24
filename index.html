@@ -265,6 +265,8 @@
             <p style="margin-top:8px">New Game Plus kann jetzt starten.</p>
         </div>
 
+        <!-- Desktop: Spielerkarte, Suche und Titel als mitlaufende Seitenleiste (Handy: normale Reihenfolge) -->
+        <div class="game-side">
         <div class="box">
             <div class="player">
                 <div class="lvl"><div><span>LEVEL</span><b id="lvlNum">0</b></div></div>
@@ -302,6 +304,9 @@
             <div class="qfilter-info" id="qInfo" hidden></div>
         </div>
 
+        </div>
+
+        <div class="game-main">
         <div id="phaseList"></div>
         <div id="gameMsg" class="msg" hidden></div>
 
@@ -310,6 +315,7 @@
             <p class="note">Wird automatisch gespeichert, wenn du das Feld verlässt.</p>
             <textarea id="notes" rows="12" aria-label="Gedanken und Notizen" placeholder="Was nimmst du dir vor? Was hast du erlebt? Ideen für die nächsten Quests …"></textarea>
             <div id="notesMsg" class="msg" hidden></div>
+        </div>
         </div>
     </section>
 

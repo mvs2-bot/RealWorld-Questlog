@@ -36,6 +36,7 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--p1); outline-offset: 2px; }
 .wrap { max-width: 760px; margin: 0 auto; }
 @media (min-width: 980px) { .wrap { max-width: 1000px; } }
+@media (min-width: 1280px) { .wrap { max-width: 1200px; } }
 b { font-weight: 600; }
 
 /* Linien-Symbole (SVG-Sprite im body) */
@@ -417,3 +418,41 @@ a.chip { text-decoration: none; }
 .spinner { width: 28px; height: 28px; margin: 0 auto; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--p1); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+/* ───────── Desktop (ab 1024 px). Handy und Tablet bleiben unverändert. ───────── */
+@media (min-width: 1024px) {
+    /* Bereichsumschalter kompakt und mittig statt über die ganze Breite */
+    .tabs { max-width: 380px; margin: -4px auto 20px; }
+
+    /* Start: Begrüßung links, hervorgehobene Quest rechts als eigene Spalte */
+    #viewDashboard > .box:has(#dashNext:not([hidden])) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 20px; align-items: stretch; }
+    #viewDashboard > .box > .player { align-self: center; }
+    #viewDashboard > .box > #dashNextMsg { grid-column: 1 / -1; margin-top: 0; }
+    #dashNext { margin-top: 0; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 14px; padding: 14px 16px; }
+    #dashNext > div:first-child { flex: 0 1 auto; }
+    #dashNext .next-desc { -webkit-line-clamp: 4; }
+    .next-actions { justify-content: space-between; }
+
+    /* Questlog: Phasen links, Spielerkarte + Suche + Titel als mitlaufende Seitenleiste rechts */
+    #viewGame { display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-auto-flow: row dense; column-gap: 20px; align-items: start; }
+    #viewGame > .viewing, #viewGame > .legend { grid-column: 1 / -1; }
+    .game-main { grid-column: 1; min-width: 0; }
+    .game-side { grid-column: 2; display: flex; flex-direction: column; gap: 14px; position: sticky; top: calc(76px + env(safe-area-inset-top, 0px));
+        max-height: calc(100vh - 92px - env(safe-area-inset-top, 0px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+        /* Platz für die Kartenschatten im Scrollbereich */
+        padding: 2px 6px 14px; margin: -2px -6px 0; }
+    .game-side > .box { margin-bottom: 0; flex: none; }
+    .game-side > .qfilter { order: 1; }
+    .game-side > .sec { order: 2; }
+    .game-side .player { flex-wrap: nowrap; gap: 14px; }
+    .game-side .lvl { width: 72px; height: 72px; }
+    .game-side .lvl b { font-size: 22px; }
+    .game-side .player-info { flex: 1 1 auto; }
+    .game-side .next-desc { -webkit-line-clamp: 3; }
+    .game-side .qfilter-row select { flex: 1 1 100%; }
+    .game-side .qfilter input[type=search] { font-size: 14px; }
+    .game-side .titles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .game-side .title-item { padding: 8px 10px; font-size: 12px; min-width: 0; }
+    .game-side .note { margin-bottom: 10px; }
+    #notesBox { margin-top: 6px !important; }
+}
